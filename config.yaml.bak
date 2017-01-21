@@ -1,0 +1,12 @@
+---
+ips:
+ - input1
+ - input2
+ - input3
+controls:
+ - control1
+ - control2
+genome: ~/tmp/test/bwa/hg38
+chrom: ~/tmp/test/bwa/chromInfo.txt
+
+
