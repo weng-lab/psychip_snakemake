@@ -4,10 +4,10 @@ rule x_cor:
 		final = "mapped_reads/{sample}.final.bam"
 	output:
 		temp_tagAlign = temp("xcor/{sample}.SE.tagAlign"),
-		tagAlign = "xcor/{sample}.SE.tagAlign.gz"
-		subsample = "xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.gz"
-		cc_score = "xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.cc.qc" 
-		temp_cc_score = temp("xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.cc.qc.tmp") 
+		tagAlign = "xcor/{sample}.SE.tagAlign.gz",
+		subsample = "xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.gz",
+		cc_score = "xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.cc.qc", 
+		temp_cc_score = temp("xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.cc.qc.tmp"),
 		cc_plot = "xcor/{sample}.filt.nodup.sample.MATE1.tagAlign.cc.plot.pdf"
 	threads: 4
 	message: "Running xcor"

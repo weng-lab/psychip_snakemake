@@ -1,0 +1,35 @@
+
+rule overlap:
+	input:
+		narrowPeak= "peaks/{sample}_peaks.narrowPeak",
+		narrowPeak_psr1= "peaks/psr_{sample}.00_peaks.narrowPeak",
+		narrowPeak_psr2= "peaks/psr_{sample}.01_peaks.narrowPeak",
+		gappedPeak= "peaks/{sample}_peaks.gappedPeak",
+		gappedPeak_psr1= "peaks/psr_{sample}.00_peaks.gappedPeak",
+		gappedPeak_psr2= "peaks/psr_{sample}.01_peaks.gappedPeak",
+		broadPeak= "peaks/{sample}_peaks.broadPeak",
+		broadPeak_psr1= "peaks/psr_{sample}.00_peaks.broadPeak",
+		broadPeak_psr2= "peaks/psr_{sample}.01_peaks.broadPeak"
+	output:
+		narrow= "finalPeaks/{sample}.narrowPeak",
+		broad= "finalPeaks/{sample}.broadPeak",
+		gapped= "finalPeaks/{sample}.gappedPeak"
+	threads:1
+	message: "Final overlap of the peaks"
+	log: "logs/6_overlap"
+	shell:
+		"""
+		bedtools intersect \
+                     -a {input.narrowPeak} -b {input.narrowPeak_psr1} -f 0.50 -F 0.50 -e |\
+                     bedtools intersect \
+                     -a stdin -b {input.narrowPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.narrow}
+		bedtools intersect \
+                     -a {input.broadPeak} -b {input.broadPeak_psr1} -f 0.50 -F 0.50 -e |\
+                     bedtools intersect \
+                     -a stdin -b {input.broadPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.broad}
+		bedtools intersect \
+                     -a {input.gappedPeak} -b {input.gappedPeak_psr1} -f 0.50 -F 0.50 -e |\
+                     bedtools intersect \
+                     -a stdin -b {input.gappedPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.gapped}
+		"""
+		

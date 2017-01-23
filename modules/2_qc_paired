@@ -8,7 +8,7 @@ rule mapstats_final:
 	log: "logs/2_qc/{sample}.qc"
 	shell:"samtools flagstat {input.final} > {output.final_mapstats}"
 
-rule mapstats_final:
+rule mapstats_raw:
 	input: 
 		raw = "mapped_reads/{sample}.raw.bam"
 	output:
