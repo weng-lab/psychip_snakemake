@@ -4,7 +4,8 @@ rule macs_callPeaks_inputs:
 		control = "bed_files/pooled_controls.bed.gz",
 		ip = "bed_files/{sample}.bed.gz",
 		ip_psr1 = "bed_files/psr_{sample}.00.bed.gz",
-		ip_psr2 = "bed_files/psr_{sample}.01.bed.gz"
+		ip_psr2 = "bed_files/psr_{sample}.01.bed.gz",
+		cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
 	output:
 		narrowPeak = "peaks/{sample}_peaks.narrowPeak",
 		narrowPeak_compressed = "peaks/{sample}_peaks.narrowPeak.gz",
@@ -30,8 +31,8 @@ rule macs_callPeaks_inputs:
 		import os, sys, time,subprocess
 		#Calling narrowPeaks	
 		shell("""
-		fraglen=`cat xcor/{wildcards.sample}.filt.nodup.sample.MATE1.tagAlign.cc.qc | cut -f3`
-		
+		fraglen=`cat {input.cc_scores}| cut -f3`
+			
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{wildcards.sample}\
@@ -380,7 +381,8 @@ rule macs_callPeaks_inputs:
 rule macs_callPeaks_pool:
 	input: 
 		control = "bed_files/pooled_controls.bed.gz",
-		ip = "bed_files/pooled_inputs.bed.gz"
+		ip = "bed_files/pooled_inputs.bed.gz",
+		cc_scores = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample=config["ips"])
 	output:
 		narrowPeak = "peaks/pooled_peaks.narrowPeak",
 		narrowPeak_compressed = "peaks/pooled_peaks.narrowPeak.gz",
@@ -398,14 +400,21 @@ rule macs_callPeaks_pool:
 	message: "Calling Peaks in pooled samples using MACS2"
 	run:
 		import os, sys, time,subprocess
-		fraglen = 150
+		sum_len = 0
+		n_files = 0
+		for files in {input.cc_scores}:
+			for file in files:
+				n_files+=1
+				with open(file,'r') as f:
+					sum_len+=int(f.readlines()[0].split("\t")[2])
+		fraglen=int(sum_len/n_files)
 	
 		#Calling narrowPeaks	
 		shell("""
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/pooled\
-                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize fraglen \
+                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize {fraglen} \
                   --keep-dup all -B --SPMR
 		""")
 		
@@ -481,7 +490,7 @@ rule macs_callPeaks_pool:
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/pooled\
-                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize fraglen \
+                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
                   --keep-dup all """)
 		
 		# Rescale Col5 scores to range 10-1000 to conform \

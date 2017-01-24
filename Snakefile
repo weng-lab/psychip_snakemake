@@ -15,19 +15,30 @@ PEAKS = expand( "peaks/{sample}_peaks.narrowPeak", sample = config["ips"])
 GAPPED = expand("peaks/{sample}_peaks.broadPeak", sample = config["ips"])
 POOLED = ["peaks/pooled_peaks.narrowPeak"]
 FINAL = expand("finalPeaks/{sample}.narrowPeak", sample = config["ips"])
-
+XCOR = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample = ALL_SAMPLES)
+	
 #rule all:
 #	input: ALL_SAM + ALL_BED + ALL_MAP_RAW + ALL_MAP_FINAL + ALL_QC 
 
 rule all:
-	input: ALL_QC + PSEUDO + PEAKS + GAPPED + POOLED + FINAL
+	input: ALL_QC + PSEUDO + PEAKS + XCOR + GAPPED + POOLED + FINAL
 
-include: "modules/0_map_bwa_paired"
-include: "modules/1_filter_paired"
-include: "modules/2_qc_paired"
-include: "modules/3_xcor"
-include: "modules/4_pseudoreps"
-include: "modules/5_peak_calling_macs_paired"
-include: "modules/6_overlap"
+if config["paired"]:
+	
+	include: "modules/0_map_bwa_paired"
+	include: "modules/1_filter_paired"
+	include: "modules/2_qc_paired"
+	include: "modules/3_xcor_paired"
+	include: "modules/4_pseudoreps"
+	include: "modules/5_peak_calling_macs_paired"
+	include: "modules/6_overlap"
 
-
+else:
+	
+	include: "modules/0_map_bwa_single"
+	include: "modules/1_filter_single"
+	include: "modules/2_qc_single"
+	include: "modules/3_xcor_single"
+	include: "modules/4_pseudoreps"
+	include: "modules/5_peak_calling_macs_single"
+	include: "modules/6_overlap"

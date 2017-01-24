@@ -68,7 +68,7 @@ if(config["sponge_flag"]):
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
 			"""
-			java -Xmx4G -jar {config[picard]} MarkDuplicates\
+			java -Xmx4G -jar {config[path]}/picard-tools-1.141/picard.jar MarkDuplicates\
 			INPUT={input} OUTPUT={output.temp} \
 			METRICS_FILE={output.qc} ASSUME_SORTED=true \
 			VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=false
@@ -118,7 +118,7 @@ else:
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
 			"""
-			java -Xmx4G -jar {config[picard]} MarkDuplicates\
+			java -Xmx4G -jar {config[path]}/picard-tools-1.141/picard.jar MarkDuplicates\
 			INPUT={input} OUTPUT={output.flt} \
 			METRICS_FILE={output.qc} ASSUME_SORTED=true \
 			VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=false
