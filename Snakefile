@@ -1,3 +1,5 @@
+shell.prefix("set -eo pipefail; ")
+
 configfile: "config.yaml"
 localrules: all
 
