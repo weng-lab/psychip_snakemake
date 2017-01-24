@@ -26,6 +26,8 @@ rule macs_callPeaks_inputs:
 		gappedPeak_psr2 = "peaks/psr_{sample}_vs_{control}.01_peaks.gappedPeak",
 		check = "logs/{sample}_vs_{control}.done"
 	threads:1
+	params:
+		name="{sample}_vs_{control}"
 	log: "logs/5_peakCalling"
 	message: "Calling Peaks using MACS2"
 	run:
@@ -36,7 +38,7 @@ rule macs_callPeaks_inputs:
 		
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
-                  -f BED -n peaks/{wildcards.sample}\
+                  -f BED -n peaks/{params.name}\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
                   --keep-dup all -B --SPMR
 		""")
@@ -64,19 +66,19 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' | tee {output.narrowPeak} | gzip -c > {output.narrowPeak_compressed}
 		
-		rm -f peaks/{wildcards.sample}_peaks.xls peaks/{wildcards.sample}_peaks.bed peaks/{wildcards.sample}_summits.bed
+		rm -f peaks/{params.name}_peaks.xls peaks/{params.name}_peaks.bed peaks/{params.name}_summits.bed
 		
 		{config[macs2]} bdgcmp  \
-                 -t peaks/{wildcards.sample}_treat_pileup.bdg -c peaks/{wildcards.sample}_control_lambda.bdg \
-                 --outdir peaks/signals -o {wildcards.sample}_FE.bdg -m FE
+                 -t peaks/{params.name}_treat_pileup.bdg -c peaks/{params.name}_control_lambda.bdg \
+                 --outdir peaks/signals -o {params.name}_FE.bdg -m FE
 		
-		bedtools slop -i peaks/signals/{wildcards.sample}_FE.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{wildcards.sample}.fc.signal.bedgraph
+		bedtools slop -i peaks/signals/{params.name}_FE.bdg -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.name}.fc.signal.bedgraph
 		
-		{config[path]}/bedGraphToBigWig peaks/signals/{wildcards.sample}.fc.signal.bedgraph \
+		{config[path]}/bedGraphToBigWig peaks/signals/{params.name}.fc.signal.bedgraph \
                 {config[chrom]} {output.fc_signal}
 		
-		rm -f peaks/signals/{wildcards.sample}.fc.signal.bedgraph
+		rm -f peaks/signals/{params.name}.fc.signal.bedgraph
 		
 		ipReads=`gzip -dc {input.ip} |wc -l | cut -d " " -f1`
 		controlReads=`gzip -dc {input.control} |wc -l | cut -d " " -f1`
@@ -84,28 +86,28 @@ rule macs_callPeaks_inputs:
             	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
 	
 		{config[macs2]} bdgcmp \
-                -t peaks/{wildcards.sample}_treat_pileup.bdg \
-                -c peaks/{wildcards.sample}_control_lambda.bdg \
-                --outdir peaks/signals -o {wildcards.sample}_ppois.bdg  \
+                -t peaks/{params.name}_treat_pileup.bdg \
+                -c peaks/{params.name}_control_lambda.bdg \
+                --outdir peaks/signals -o {params.name}_ppois.bdg  \
                 -m ppois -S $sval
 
-		bedtools slop -i peaks/signals/{wildcards.sample}_ppois.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{wildcards.sample}.pval.signal.bedgraph
+		bedtools slop -i peaks/signals/{params.name}_ppois.bdg -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.name}.pval.signal.bedgraph
 		
-		rm -rf peaks/singals/{wildcards.sample}_ppois.bdg
+		rm -rf peaks/singals/{params.name}_ppois.bdg
 	
-		{config[path]}/bedGraphToBigWig peaks/signals/{wildcards.sample}.pval.signal.bedgraph\
+		{config[path]}/bedGraphToBigWig peaks/signals/{params.name}.pval.signal.bedgraph\
 		{config[chrom]} {output.pvalue_signal}
 		
-		rm -f peaks/signals/{wildcards.sample}.pval.signal.bedgraph
-		rm -f peaks/{wildcards.sample}_treat_pileup.bdg peaks/{wildcards.sample}_control_lambda.bdg
+		rm -f peaks/signals/{params.name}.pval.signal.bedgraph
+		rm -f peaks/{params.name}_treat_pileup.bdg peaks/{params.name}_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_narrow_bb {output.narrowPeak}
 		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_narrow_bb
 		
-		rm -f peaks/{wildcards.sample}.narrowPeak-rescaled
-		rm -f peaks/{wildcards.sample}.narrowPeak-sorted
+		rm -f peaks/{params.name}.narrowPeak-rescaled
+		rm -f peaks/{params.name}.narrowPeak-sorted
 		""")
 		
 		###Qui cominciano le pseudorep
@@ -113,7 +115,7 @@ rule macs_callPeaks_inputs:
 		fraglen=`cat {input.cc_scores} | cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr1} -c {input.control}\
-                  -f BED -n peaks/psr_{wildcards.sample}.00\
+                  -f BED -n peaks/psr_{params.name}.00\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
                   --keep-dup all -B --SPMR
 		""")
@@ -141,13 +143,13 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' >  {output.narrowPeak_psr1}
 		
-		rm -f peaks/psr_{wildcards.sample}.00_peaks.xls peaks/psr_{wildcards.sample}.00_peaks.bed peaks/psr_{wildcards.sample}.00_summits.bed
+		rm -f peaks/psr_{params.name}.00_peaks.xls peaks/psr_{params.name}.00_peaks.bed peaks/psr_{params.name}.00_summits.bed
 		rm -f  output.narrowPeak_psr1-sorted output.narrowPeak_psr1-rescaled
 		
 		fraglen=`cat {input.cc_scores} | cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr2} -c {input.control}\
-                  -f BED -n peaks/psr_{wildcards.sample}.01\
+                  -f BED -n peaks/psr_{params.name}.01\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
                   --keep-dup all -B --SPMR
 		""")
@@ -175,11 +177,11 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' >  {output.narrowPeak_psr2}
 		
-		rm -f peaks/psr_{wildcards.sample}.01_peaks.xls peaks/psr_{wildcards.sample}.01_peaks.bed peaks/psr_{wildcards.sample}.01_summits.bed
-		rm -f peaks/psr_{wildcards.sample}.00_control_lamda.bdg peaks/psr_{wildcards.sample}.00.narrowPeak-rescaled peaks/psr_{wildcards.sample}.00.narrowPeak-sorted
-		rm -f peaks/psr_{wildcards.sample}.00_treat_pileup.bdg
-		rm -f peaks/psr_{wildcards.sample}.01_control_lamda.bdg peaks/psr_{wildcards.sample}.01.narrowPeak-rescaled peaks/psr_{wildcards.sample}.01.narrowPeak-sorted
-		rm -f peaks/psr_{wildcards.sample}.01_treat_pileup.bdg
+		rm -f peaks/psr_{params.name}.01_peaks.xls peaks/psr_{params.name}.01_peaks.bed peaks/psr_{params.name}.01_summits.bed
+		rm -f peaks/psr_{params.name}.00_control_lamda.bdg peaks/psr_{params.name}.00.narrowPeak-rescaled peaks/psr_{params.name}.00.narrowPeak-sorted
+		rm -f peaks/psr_{params.name}.00_treat_pileup.bdg
+		rm -f peaks/psr_{params.name}.01_control_lamda.bdg peaks/psr_{params.name}.01.narrowPeak-rescaled peaks/psr_{params.name}.01.narrowPeak-sorted
+		rm -f peaks/psr_{params.name}.01_treat_pileup.bdg
 		""")
 	
 		#Calling gappedPeaks	
@@ -187,7 +189,7 @@ rule macs_callPeaks_inputs:
 		fraglen=`cat {input.cc_scores} | cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
-                  -f BED -n peaks/{wildcards.sample}\
+                  -f BED -n peaks/{params.name}\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
                   --keep-dup all """)
 		
@@ -214,7 +216,7 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' | tee {output.broadPeak} | gzip -c > {output.broadPeak_compressed}
 		
-		rm -f peaks/{wildcards.sample}_peaks.xls peaks/{wildcards.sample}_peaks.bed peaks/{wildcards.sample}_summits.bed
+		rm -f peaks/{params.name}_peaks.xls peaks/{params.name}_peaks.bed peaks/{params.name}_summits.bed
 		
 		rm -f  {output.broadPeak}-sorted {output.broadPeak}-rescaled
 		""")
@@ -242,7 +244,7 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' | tee {output.gappedPeak} | gzip -c > {output.gappedPeak_compressed}
 		
-		rm -f peaks/{wildcards.sample}_peaks.xls peaks/{wildcards.sample}_peaks.bed peaks/{wildcards.sample}_summits.bed
+		rm -f peaks/{params.name}_peaks.xls peaks/{params.name}_peaks.bed peaks/{params.name}_summits.bed
 		
 		rm -f  {output.gappedPeak}-sorted {output.gappedPeak}-rescaled
 		
@@ -260,7 +262,7 @@ rule macs_callPeaks_inputs:
 		fraglen=`cat {input.cc_scores} | cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr1} -c {input.control}\
-                  -f BED -n peaks/psr_{wildcards.sample}.00\
+                  -f BED -n peaks/psr_{params.name}.00\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
                   --keep-dup all """)
 		
@@ -287,7 +289,7 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' > {output.broadPeak_psr1}
 		
-		rm -f peaks/pst_{wildcards.sample}.00_peaks.xls peaks/psr_{wildcards.sample}.00_peaks.bed peaks/psr_{wildcards.sample}.00_summits.bed
+		rm -f peaks/pst_{params.name}.00_peaks.xls peaks/psr_{params.name}.00_peaks.bed peaks/psr_{params.name}.00_summits.bed
 		
 		rm -f  {output.broadPeak_psr1}-sorted {output.broadPeak_psr1}-rescaled
 		""")
@@ -315,7 +317,7 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' > {output.gappedPeak_psr1}
 		
-		rm -f peaks/psr_{wildcards.sample}.00_peaks.xls peaks/psr_{wildcards.sample}.00_peaks.bed peaks/psr_{wildcards.sample}.00_summits.bed
+		rm -f peaks/psr_{params.name}.00_peaks.xls peaks/psr_{params.name}.00_peaks.bed peaks/psr_{params.name}.00_summits.bed
 		
 		rm -f  {output.gappedPeak_psr1}-sorted {output.gappedPeak_psr1}-rescaled
 		""")
@@ -324,7 +326,7 @@ rule macs_callPeaks_inputs:
 		fraglen=`cat {input.cc_scores} | cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr2} -c {input.control}\
-                  -f BED -n peaks/psr_{wildcards.sample}.01\
+                  -f BED -n peaks/psr_{params.name}.01\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
                   --keep-dup all """)
 		
@@ -351,7 +353,7 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' > {output.broadPeak_psr2}
 		
-		rm -f peaks/psr_{wildcards.sample}.01_peaks.xls peaks/psr_{wildcards.sample}.01_peaks.bed peaks/psr_{wildcards.sample}.01_summits.bed
+		rm -f peaks/psr_{params.name}.01_peaks.xls peaks/psr_{params.name}.01_peaks.bed peaks/psr_{params.name}.01_summits.bed
 		
 		rm -f  {output.broadPeak_psr2}-sorted {output.broadPeak_psr2}-rescaled
 		""")
@@ -379,10 +381,10 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' > {output.gappedPeak_psr2}
 		
-		rm -f peaks/psr_{wildcards.sample}.01_peaks.xls peaks/psr_{wildcards.sample}.01_peaks.bed peaks/psr_{wildcards.sample}.01_summits.bed
+		rm -f peaks/psr_{params.name}.01_peaks.xls peaks/psr_{params.name}.01_peaks.bed peaks/psr_{params.name}.01_summits.bed
 		
 		rm -f  {output.gappedPeak_psr2}-sorted {output.gappedPeak_psr2}-rescaled
-		touch logs/{sample}_vs_{control}.done
+		touch logs/{params.name}.done
 		""")
 
 rule macs_callPeaks_pool:

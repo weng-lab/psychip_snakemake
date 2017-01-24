@@ -16,7 +16,7 @@ XCOR = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample = ALL_
 
 if config["matching"]:
 	PEAKS = expand("logs/{sample}_vs_{control}.done", zip, sample=config["ips"], control=config["controls"])	
-	FINAL = expand("finalPeaks/{sample}_vs_{control}.narrowPeak", sample = config["ips"], control=config["controls"])
+	FINAL = expand("finalPeaks/{sample}_vs_{control}.narrowPeak",zip, sample = config["ips"], control=config["controls"])
 else:
 	PEAKS = expand( "peaks/{sample}_peaks.narrowPeak", sample = config["ips"])
 	FINAL = expand("finalPeaks/{sample}.narrowPeak", sample = config["ips"])
