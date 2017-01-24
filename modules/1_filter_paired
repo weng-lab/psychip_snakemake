@@ -78,7 +78,6 @@ if(config["sponge_flag"]):
 		input: "mapped_reads/{sample}.temp"
 		output:	
 			flt = temp("mapped_reads/{sample}.flt.bam"),
-			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam")
 		threads:4
 		message: "Removing sponges"
 		log: "logs/1_filtering/{sample}_filter"

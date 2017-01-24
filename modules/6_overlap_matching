@@ -32,8 +32,8 @@ rule overlap:
                      bedtools intersect \
                      -a stdin -b {input.gappedPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.gapped}
 
-		ln -s {output.gapped} "finalPeaks/{sample}.gappedPeak"
-		ln -s {output.broad}  "finalPeaks/{sample}.broadPeak"
-		ln -s {output.narrow} "finalPeaks/{sample}.narrowPeak"
+		ln -s {output.gapped} "finalPeaks/{wildcards.sample}.gappedPeak"
+		ln -s {output.broad}  "finalPeaks/{wildcards.sample}.broadPeak"
+		ln -s {output.narrow} "finalPeaks/{wildcards.sample}.narrowPeak"
 		"""
 		
