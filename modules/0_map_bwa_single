@@ -1,0 +1,10 @@
+
+rule map_bwa_single:
+	input: "samples/{sample}.fastq.gz"
+	output:
+		temp("mapped_reads/{sample}.raw.sam.gz")
+	threads:10
+	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
+	log: "logs/0_mapping/{sample}_map_single"
+	shell:
+		"bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"

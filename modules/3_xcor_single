@@ -1,0 +1,36 @@
+
+rule x_cor:
+	input: 
+		final = "mapped_reads/{sample}.final.bam"
+	output:
+		temp_tagAlign = temp("xcor/{sample}.SE.tagAlign"),
+		tagAlign = "xcor/{sample}.SE.tagAlign.gz",
+	threads: 4
+	message: "Running xcor"
+	log: "logs/3_xcor/{sample}.xcor"
+	shell:
+		"""
+		bamToBed -i {input} | awk 'BEGIN{{OFS="\\t"}}{{$4="N";$5="1000";print $0}}' |\
+		tee {output.temp_tagAlign} |\
+		gzip -c > {output.tagAlign}
+		"""
+rule spp:
+	input: 
+		temp_tagAlign = "xcor/{sample}.SE.tagAlign"
+	output:
+		subsample = "xcor/{sample}.filt.nodup.sample.SE.tagAlign",
+		cc_score = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", 
+		temp_cc_score = temp("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc.tmp"),
+		cc_plot = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.plot.pdf"
+	threads: 4	
+	message: "Running spp : grep -v \"chrM\" {input.temp_tagAlign} |shuf -n 15000000 |awk 'BEGIN{{OFS=\"\\t\"}}{{$4=\"N\";$5=\"1000\";print $0}}' > {output.subsample}"
+	shell:
+		"""
+		grep -v 'chrM' {input.temp_tagAlign} |\
+		shuf -n 15000000  > {output.subsample} 
+		
+		Rscript {config[path]}/run_spp_nodups.R -c={output.subsample} -p={threads} -filtchr=chrM -savp={output.cc_plot} -out={output.cc_score} > /dev/null 2>&1
+        	sed -r  's/,[^\\t]+//g' {output.cc_score} > {output.temp_cc_score} 
+		cp {output.temp_cc_score} {output.cc_score}		
+		"""
+

@@ -1,0 +1,19 @@
+---
+ips:
+ - input1
+ - input2
+ - input3
+controls:
+ - control1
+ - control2
+
+genome: ~/tmp/hg19_assembly/hg19.fa
+chrom: ~/tmp/hg19_assembly/hg19.chrom.sizes
+sponge_flag: false
+sponges: ""
+picard: /home/eugenio/git/psychip_snakemake/common/picard-tools-1.141/picard.jar
+path: /home/eugenio/git/psychip_snakemake/common
+macs2: macs2
+macs_g: hs
+paired: true
+matching: false
