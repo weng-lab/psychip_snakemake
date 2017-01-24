@@ -386,7 +386,7 @@ rule macs_callPeaks_inputs:
 rule macs_callPeaks_pool:
 	input: 
 		control = "bed_files/pooled_controls.bed.gz",
-		ip = "bed_files/pooled_inputs.bed.gz"
+		ip = "bed_files/pooled_inputs.bed.gz",
 		cc_scores = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample=config["ips"])
 	output:
 		narrowPeak = "peaks/pooled_peaks.narrowPeak",

@@ -84,7 +84,7 @@ if(config["sponge_flag"]):
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
 			"""
-			samtools view -@ {threads} -h {input}\
+			samtools view -@ {threads} -h {input} |\
                         grep -vF -f {config[sponges]} - |\
                         samtools view -@ {threads} -b -o {output.flt} -
 
