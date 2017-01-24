@@ -49,7 +49,7 @@ rule remove_aberrant_reads:
 		"""
 			samtools view -@ {threads} -F1804 -f2 -q 20 -h \
                         -u {input} | \
-                        samtools sort -@ {threads} -o {output.tmp} -n -
+                        samtools sort -@ {threads} -n -o {output.tmp} -
 
 			samtools fixmate -r {output.tmp} {output.clean}
 			
