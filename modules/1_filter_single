@@ -4,7 +4,7 @@ rule remove_badcigar_step2:
 	output: "mapped_reads/{sample}.raw.bam"
 	threads: 4
 	params:
-		prefix={sample}
+		prefix="{sample}"
 	shell:
 		"""
             	samtools view -@ {threads} -Su {input.sam} |\

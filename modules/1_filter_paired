@@ -23,7 +23,7 @@ rule remove_badcigar_step2:
 	output: "mapped_reads/{sample}.raw.bam"
 	threads: 4
 	params:
-		prefix={sample}
+		prefix="{sample}"
 	run:
 		with open("mapped_reads/" + wildcards.sample + ".badcigar") as fp:
 			peek = [x for i,x in enumerate(fp) if i<10 and x.rstrip()]
@@ -46,7 +46,7 @@ rule remove_aberrant_reads:
 		clean = temp("mapped_reads/{sample}.tmp.clean.bam")
 	threads: 4
 	params:
-		prefix={sample}
+		prefix="{sample}"
 	message: "Removing aberrant reads : samtools view -@ {threads} -F1804 -f2 -q 20 -h -u {input} | samtools sort -@ {threads} -n -o {output.tmp} - \n samtools fixmate -r {output.tmp} {output.clean} \n samtools view -@ {threads} -F1804 -f2 -u {output.clean} | samtools sort -@{threads} -o {output.flt}"
 	log: "logs/1_filtering/{sample}_filter"
 	shell:
