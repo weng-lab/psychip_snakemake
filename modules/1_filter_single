@@ -3,10 +3,12 @@ rule remove_badcigar_step2:
 		sam = "mapped_reads/{sample}.raw.sam.gz",
 	output: "mapped_reads/{sample}.raw.bam"
 	threads: 4
+	params:
+		prefix={sample}
 	shell:
 		"""
             	samtools view -@ {threads} -Su {input.sam} |\
-                samtools sort -@ {threads} -o {output} -
+                samtools sort -@ {threads} -T {prefix} -o {output} -
 		"""
 
 rule remove_aberrant_reads:
