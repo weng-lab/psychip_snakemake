@@ -17,4 +17,4 @@ macs_g: hs
 paired: true
 matching: false
 sort: sort #or path to the update version
-shuf: shuf #or path to the update version
+split: split #or path to the update version

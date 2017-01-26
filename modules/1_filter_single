@@ -63,6 +63,8 @@ if(config["sponge_flag"]):
 			final_bam = "mapped_reads/{sample}.final.bam",
 			final_bai = "mapped_reads/{sample}.final.bai"
 		threads: 4
+		params:
+			prefix="{sample}_final"
 		message: "Filtering out bad samtools flags"
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
@@ -70,7 +72,7 @@ if(config["sponge_flag"]):
                         samtools view -@ {threads} -F1804 -b -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -n -o {output.tmp_sort} {input}
+			samtools sort -@ {threads} -n -T {params.prefix} -o {output.tmp_sort} {input}
                         """	
 			
 else:
@@ -98,6 +100,8 @@ else:
 			final_bam = "mapped_reads/{sample}.final.bam",
 			final_bai = "mapped_reads/{sample}.final.bai"
 		threads: 4
+		params:
+			prefix="{sample}_final"
 		message: "Filtering out bad samtools flags"
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
@@ -105,7 +109,7 @@ else:
                         samtools view -@ {threads} -F1804 -b -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -n -o {output.tmp_sort} {input}
+			samtools sort -@ {threads} -n -T {params.prefix} -o {output.tmp_sort} {input}
                         """	
 
 rule generate_bed:
@@ -118,6 +122,6 @@ rule generate_bed:
 	shell:
 		"""
 		bedtools bamtobed -i {input} | cut -f1-3 | \
-		sort --parallel={threads} -k1,1 -k2,2n | \
+		config[sort] --parallel={threads} -k1,1 -k2,2n | \
                 gzip -c > {output.bed} 
 		"""
