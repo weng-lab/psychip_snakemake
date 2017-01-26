@@ -177,6 +177,6 @@ rule generate_bed:
                 {{ chrom=$1; beg=$2; end=$6;
                 if($2>$5){{beg=$5}} if($3>$6){{end=$3}}
                 print chrom,beg,end
-                }}' - | /home/em79w/Programs/sort --parallel={threads} -S 2G -k1,1 -k2,2n | \
+                }}' - | {config[sort]} --parallel={threads} -S 2G -k1,1 -k2,2n | \
                 gzip -c > {output.bed}"""
 
