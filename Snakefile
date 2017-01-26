@@ -25,10 +25,8 @@ else:
 #	GAPPED = expand("peaks/{sample}_peaks.gappedPeak", sample = config["ips"])
 	
 		
-#rule all:
-#	input: ALL_QC + PSEUDO + PEAKS + XCOR + POOLED + FINAL
 rule all:
-	input: ALL_BED
+	input: ALL_QC + PSEUDO + PEAKS + XCOR + POOLED + FINAL
 
 if config["matching"]:
 	if config["paired"]:
