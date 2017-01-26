@@ -53,7 +53,7 @@ rule remove_aberrant_reads:
 		"""
 			samtools view -@ {threads} -F1804 -f2 -q 20 -h \
                         -u {input} | \
-                        samtools sort -@ {threads} -n -T {params.prefix} -o {output.tmp} -
+                        samtools sort -@ {threads} -T {params.prefix} -o {output.tmp} -
 
 			samtools fixmate -r {output.tmp} {output.clean}
 			
@@ -99,15 +99,17 @@ if(config["sponge_flag"]):
 			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
 			final_bam = "mapped_reads/{sample}.final.bam",
 			final_bai = "mapped_reads/{sample}.final.bai"
-		threads: 4
-		message: "Filtering out bad samtools flags"
+		threads: 10
+		params:
+			prefix="{sample}_finaltmp"
+		message: "Filtering out bad samtools flags:\nsamtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}\nsamtools index {output.final_bam} {output.final_bai}\nsamtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input} "
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
                         """
                         samtools view -@ {threads} -F1804 -f2 -b -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -n -o {output.tmp_sort} {input}
+			samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input}
                         """	
 			
 else:
@@ -134,15 +136,17 @@ else:
 			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
 			final_bam = "mapped_reads/{sample}.final.bam",
 			final_bai = "mapped_reads/{sample}.final.bai"
-		threads: 4
-		message: "Filtering out bad samtools flags"
+		threads: 10
+		message: "Filtering out bad samtools flags:\nsamtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}\nsamtools index {output.final_bam} {output.final_bai}\nsamtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input} "
 		log: "logs/1_filtering/{sample}_filter"
+		params:
+			prefix="{sample}_finaltmp"
 		shell:
                         """
-                        samtools view -@ {threads} -F1804 -f2 -b -o {output.final_bam} {input}
+                        samtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -n -o {output.tmp_sort} {input}
+			samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input}
                         """	
 
 rule generate_bedpe:

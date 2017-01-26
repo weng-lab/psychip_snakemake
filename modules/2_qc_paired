@@ -25,11 +25,13 @@ rule library_complexity:
 		lib_complexity = "qc/{sample}.libComplexity.QC.txt",
 		tmp_sort_bam = temp("qc/{sample}.flt.tmp.sort.bam")
 	threads: 4
+	params:
+		prefix="{sample}_libcom"
 	message: "Quality control: Computing library complexity"
 	log: "logs/2_qc/{sample}.qc"
 	shell:
 		"""
-		samtools sort -n -@ {threads} -o {output.tmp_sort_bam} {input.flt}
+		samtools sort -n -@ {threads} -T {params.prefix} -o {output.tmp_sort_bam} {input.flt}
 		echo 1 | \
                      awk '{{print "#Total\tDistinct\tOne\tTwo\tNRF\tPBC1\tPBC2"}}' \
                      > {output.lib_complexity}
