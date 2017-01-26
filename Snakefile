@@ -7,7 +7,7 @@ localrules: all
 ALL_SAMPLES = config["ips"] + config["controls"]
 
 #ALL_SAM = expand("mapped_reads/{sample}.raw.sam.gz", sample = ALL_SAMPLES)
-#ALL_BED = expand("bed_files/{sample}.bed.gz", sample = ALL_SAMPLES)
+ALL_BED = expand("bed_files/{sample}.bed.gz", sample = ALL_SAMPLES)
 #ALL_MAP_RAW = expand("qc/{sample}.raw.flagstat.QC.txt", sample = ALL_SAMPLES)
 #ALL_MAP_FINAL = expand("qc/{sample}.final.flagstat.QC.txt", sample = ALL_SAMPLES)
 ALL_QC = expand("qc/{sample}.libComplexity.QC.txt", sample = ALL_SAMPLES)
@@ -22,11 +22,13 @@ if config["matching"]:
 else:
 	PEAKS = expand( "peaks/{sample}_peaks.narrowPeak", sample = config["ips"])
 	FINAL = expand("finalPeaks/{sample}.narrowPeak", sample = config["ips"])
-#	GAPPED = expand("peaks/{sample}_peaks.broadPeak", sample = config["ips"])
+#	GAPPED = expand("peaks/{sample}_peaks.gappedPeak", sample = config["ips"])
+	
 		
+#rule all:
+#	input: ALL_QC + PSEUDO + PEAKS + XCOR + POOLED + FINAL
 rule all:
-	input: ALL_QC + PSEUDO + PEAKS + XCOR + POOLED + FINAL
-
+	input: ALL_BED
 
 if config["matching"]:
 	if config["paired"]:

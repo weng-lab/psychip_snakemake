@@ -1,19 +1,20 @@
 ---
 ips:
- - input1
+ - input1 #prefix original file name input1.R1.fastq.gz input1.R2.fastq.gz
  - input2
  - input3
 controls:
  - control1
  - control2
 
-genome: ~/tmp/hg19_assembly/hg19.fa
-chrom: ~/tmp/hg19_assembly/hg19.chrom.sizes
+genome: path/to/bwa/index/hg19
+chrom: path/to/chrom/file/hg19.chrom.sizes
 sponge_flag: false
-sponges: ""
-picard: /home/eugenio/git/psychip_snakemake/common/picard-tools-1.141/picard.jar
-path: /home/eugenio/git/psychip_snakemake/common
-macs2: macs2
+sponges: path/to/sponges/names
+path: /home/user/git/psychip_snakemake/common
+macs2:/path/to/macs2
 macs_g: hs
 paired: true
 matching: false
+sort: sort #or path to the update version
+shuf: shuf #or path to the update version

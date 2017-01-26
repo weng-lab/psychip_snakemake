@@ -46,19 +46,20 @@ rule remove_aberrant_reads:
 		clean = temp("mapped_reads/{sample}.tmp.clean.bam")
 	threads: 4
 	params:
+		mem = "2G",
 		prefix="{sample}"
-	message: "Removing aberrant reads : samtools view -@ {threads} -F1804 -f2 -q 20 -h -u {input} | samtools sort -@ {threads} -n -o {output.tmp} - \n samtools fixmate -r {output.tmp} {output.clean} \n samtools view -@ {threads} -F1804 -f2 -u {output.clean} | samtools sort -@{threads} -o {output.flt}"
+	message: "Removing aberrant reads : samtools view -@ {threads} -F1804 -f2 -q 20 -h -u {input} | samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -n -o {output.tmp} - \n samtools fixmate -r {output.tmp} {output.clean} \n samtools view -@ {threads} -F1804 -f2 -u {output.clean} | samtools sort -@{threads} -m {params.mem} -T {params.prefix} -o {output.flt} -"
 	log: "logs/1_filtering/{sample}_filter"
 	shell:
 		"""
 			samtools view -@ {threads} -F1804 -f2 -q 20 -h \
                         -u {input} | \
-                        samtools sort -@ {threads} -T {params.prefix} -o {output.tmp} -
+                        samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -n -o {output.tmp} -
 
 			samtools fixmate -r {output.tmp} {output.clean}
 			
 			samtools view -@ {threads} -F1804 -f2 -u {output.clean} |\
-                        samtools sort -@ {threads} -T {params.prefix} -o {output.flt} -
+                        samtools sort -@ {threads} -m {params.mem} -T {params.prefix}_2 -o {output.flt} -
 		"""
 
 if(config["sponge_flag"]):
@@ -101,6 +102,7 @@ if(config["sponge_flag"]):
 			final_bai = "mapped_reads/{sample}.final.bai"
 		threads: 10
 		params:
+			mem = "2G",
 			prefix="{sample}_finaltmp"
 		message: "Filtering out bad samtools flags:\nsamtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}\nsamtools index {output.final_bam} {output.final_bai}\nsamtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input} "
 		log: "logs/1_filtering/{sample}_filter"
@@ -109,7 +111,7 @@ if(config["sponge_flag"]):
                         samtools view -@ {threads} -F1804 -f2 -b -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input}
+			samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -o {output.tmp_sort} -n {input}
                         """	
 			
 else:
@@ -175,6 +177,6 @@ rule generate_bed:
                 {{ chrom=$1; beg=$2; end=$6;
                 if($2>$5){{beg=$5}} if($3>$6){{end=$3}}
                 print chrom,beg,end
-                }}' - | sort --parallel={threads} -k1,1 -k2,2n | \
+                }}' - | /home/em79w/Programs/sort --parallel={threads} -S 2G -k1,1 -k2,2n | \
                 gzip -c > {output.bed}"""
 

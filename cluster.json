@@ -1,0 +1,26 @@
+{
+"__default__" :
+{
+"time" : "08:00",
+"n" : 4,
+"mem" : 3000
+},
+"map_bwa_paired" :
+{
+"time" : "12:00",
+"n" : 10,
+"mem" : 2000
+},
+"macs_callPeaks_inputs" :
+{
+"time" : "24:00",
+"n" : 2,
+"mem" : 4000
+},
+"macs_callPeaks_pool" :
+{
+"time" : "24:00",
+"n" : 2,
+"mem" : 4000
+},
+}
