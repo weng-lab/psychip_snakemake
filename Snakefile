@@ -15,6 +15,8 @@ POOL = ["bed_files/pooled_controls.bed.gz", "bed_files/pooled_inputs.bed.gz"]
 PSEUDO = expand("bed_files/psr_{sample}.01.bed.gz bed_files/psr_{sample}.00.bed.gz".split(), sample = config["ips"])
 POOLED = ["peaks/pooled_peaks.narrowPeak"]
 XCOR = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample = ALL_SAMPLES)
+FLAG_F = expand("qc/{sample}.final.flagstat.QC.txt", sample = ALL_SAMPLES)
+FLAG_R = expand("qc/{sample}.raw.flagstat.QC.txt", sample = ALL_SAMPLES)
 
 if config["matching"]:
 	PEAKS = expand("logs/{sample}_vs_{control}.done", zip, sample=config["ips"], control=config["controls"])	
@@ -26,7 +28,7 @@ else:
 	
 		
 rule all:
-	input: ALL_QC + PSEUDO + PEAKS + XCOR + POOLED + FINAL
+	input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + PEAKS + XCOR + POOLED + FINAL
 
 if config["matching"]:
 	if config["paired"]:
