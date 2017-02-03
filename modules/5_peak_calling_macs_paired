@@ -103,12 +103,12 @@ rule macs_callPeaks_inputs:
 		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_narrow_bb
 		
-		rm -f peaks/{wildcards.sample}.narrowPeak-rescaled
-		rm -f peaks/{wildcards.sample}.narrowPeak-sorted
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 		
 		###Qui cominciano le pseudorep
 		shell("""
+		fraglen=`cat {input.cc_scores}| cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr1} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.00\
@@ -140,8 +140,9 @@ rule macs_callPeaks_inputs:
                	print $0}}' >  {output.narrowPeak_psr1}
 		
 		rm -f peaks/psr_{wildcards.sample}.00_peaks.xls peaks/psr_{wildcards.sample}.00_peaks.bed peaks/psr_{wildcards.sample}.00_summits.bed
-		rm -f  output.narrowPeak_psr1-sorted output.narrowPeak_psr1-rescaled
-		
+		rm -f {sorted_fn} {rescaled_fn} 
+
+		fraglen=`cat {input.cc_scores}| cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr2} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.01\
@@ -172,6 +173,7 @@ rule macs_callPeaks_inputs:
 		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
                	print $0}}' >  {output.narrowPeak_psr2}
 		
+		rm -f {sorted_fn} {rescaled_fn} 
 		rm -f peaks/psr_{wildcards.sample}.01_peaks.xls peaks/psr_{wildcards.sample}.01_peaks.bed peaks/psr_{wildcards.sample}.01_summits.bed
 		rm -f peaks/psr_{wildcards.sample}.00_control_lamda.bdg peaks/psr_{wildcards.sample}.00.narrowPeak-rescaled peaks/psr_{wildcards.sample}.00.narrowPeak-sorted
 		rm -f peaks/psr_{wildcards.sample}.00_treat_pileup.bdg
@@ -181,6 +183,7 @@ rule macs_callPeaks_inputs:
 	
 		#Calling gappedPeaks	
 		shell("""
+		fraglen=`cat {input.cc_scores}| cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{wildcards.sample}\
@@ -212,7 +215,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/{wildcards.sample}_peaks.xls peaks/{wildcards.sample}_peaks.bed peaks/{wildcards.sample}_summits.bed
 		
-		rm -f  {output.broadPeak}-sorted {output.broadPeak}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -240,7 +243,6 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/{wildcards.sample}_peaks.xls peaks/{wildcards.sample}_peaks.bed peaks/{wildcards.sample}_summits.bed
 		
-		rm -f  {output.gappedPeak}-sorted {output.gappedPeak}-rescaled
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_broad_bb {output.broadPeak}
 		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_broad_bb {config[chrom]} {output.broadPeak_bb}
@@ -249,10 +251,12 @@ rule macs_callPeaks_inputs:
 		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_gapped_bb {config[chrom]} {output.gappedPeak_bb}
 		rm -f peaks/tmp_gapped_bb
 
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 		
 		#Calling gappedPeaks psr1
 		shell("""
+		fraglen=`cat {input.cc_scores}| cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr1} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.00\
@@ -284,7 +288,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/pst_{wildcards.sample}.00_peaks.xls peaks/psr_{wildcards.sample}.00_peaks.bed peaks/psr_{wildcards.sample}.00_summits.bed
 		
-		rm -f  {output.broadPeak_psr1}-sorted {output.broadPeak_psr1}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -312,10 +316,11 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/psr_{wildcards.sample}.00_peaks.xls peaks/psr_{wildcards.sample}.00_peaks.bed peaks/psr_{wildcards.sample}.00_summits.bed
 		
-		rm -f  {output.gappedPeak_psr1}-sorted {output.gappedPeak_psr1}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 		#Calling gappedPeaks psr2
 		shell("""
+		fraglen=`cat {input.cc_scores}| cut -f3`
 		{config[macs2]} callpeak \
                   -t {input.ip_psr2} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.01\
@@ -347,7 +352,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/psr_{wildcards.sample}.01_peaks.xls peaks/psr_{wildcards.sample}.01_peaks.bed peaks/psr_{wildcards.sample}.01_summits.bed
 		
-		rm -f  {output.broadPeak_psr2}-sorted {output.broadPeak_psr2}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -375,7 +380,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/psr_{wildcards.sample}.01_peaks.xls peaks/psr_{wildcards.sample}.01_peaks.bed peaks/psr_{wildcards.sample}.01_summits.bed
 		
-		rm -f  {output.gappedPeak_psr2}-sorted {output.gappedPeak_psr2}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 rule macs_callPeaks_pool:
@@ -481,8 +486,7 @@ rule macs_callPeaks_pool:
 		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_narrow_bb
 		
-		rm -f peaks/pooled.narrowPeak-rescaled
-		rm -f peaks/pooled.narrowPeak-sorted
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 		
 		#Calling gappedPeaks	
@@ -518,7 +522,7 @@ rule macs_callPeaks_pool:
 		
 		rm -f peaks/pooled_peaks.xls peaks/pooled_peaks.bed peaks/pooled_summits.bed
 		
-		rm -f  {output.broadPeak}-sorted {output.broadPeak}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -546,7 +550,7 @@ rule macs_callPeaks_pool:
 		
 		rm -f peaks/pooled_peaks.xls peaks/pooled_peaks.bed peaks/pooled_summits.bed
 		
-		rm -f  {output.gappedPeak}-sorted {output.gappedPeak}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_broad_bb {output.broadPeak}
 		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_broad_bb {config[chrom]} {output.broadPeak_bb}
