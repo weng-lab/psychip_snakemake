@@ -22,14 +22,14 @@ rule overlap:
 		bedtools intersect \
                      -a {input.narrowPeak} -b {input.narrowPeak_psr1} -f 0.50 -F 0.50 -e |\
                      bedtools intersect \
-                     -a stdin -b {input.narrowPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.narrow}
+                     -a stdin -b {input.narrowPeak_psr2} -f 0.50 -F 0.50 -e -u > {output.narrow}
 		bedtools intersect \
                      -a {input.broadPeak} -b {input.broadPeak_psr1} -f 0.50 -F 0.50 -e |\
                      bedtools intersect \
-                     -a stdin -b {input.broadPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.broad}
+                     -a stdin -b {input.broadPeak_psr2} -f 0.50 -F 0.50 -e -u > {output.broad}
 		bedtools intersect \
                      -a {input.gappedPeak} -b {input.gappedPeak_psr1} -f 0.50 -F 0.50 -e |\
                      bedtools intersect \
-                     -a stdin -b {input.gappedPeak_psr2} -f 0.50 -F 0.50 -e -u >{output.gapped}
+                     -a stdin -b {input.gappedPeak_psr2} -f 0.50 -F 0.50 -e -u > {output.gapped}
 		"""
 		
