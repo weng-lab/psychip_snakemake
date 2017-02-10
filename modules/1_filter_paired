@@ -83,7 +83,11 @@ if(config["sponge_flag"]):
 		input: "mapped_reads/{sample}.temp"
 		output:	
 			flt = temp("mapped_reads/{sample}.flt.bam"),
+			sponge_temp=temp("mapped_reads/sponges_removal_{sample}")
 		threads:4
+		params:
+			prefix="temp_sponges_{sample}",
+			mem="2G"
 		message: "Removing sponges"
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
@@ -91,6 +95,9 @@ if(config["sponge_flag"]):
 			samtools view -@ {threads} -h {input} |\
                         grep -vF -f {config[sponges]} - |\
                         samtools view -@ {threads} -b -o {output.flt} -
+			
+			samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -n -o {output.sponge_temp} {output.flt}
+			samtools fixmate -r {output.sponge_temp} {output.flt}
 
 			"""
 
@@ -108,7 +115,10 @@ if(config["sponge_flag"]):
 		log: "logs/1_filtering/{sample}_filter"
 		shell:
                         """
-                        samtools view -@ {threads} -F1804 -f2 -b -o {output.final_bam} {input}
+			samtools view -@ {threads} -F1804 -f2 -b -u {input} |\
+                        samtools sort -@ {threads} -m {params.mem} -T {params.prefix}_2 -o {output.final_bam} -
+
+                        #samtools view -@ {threads} -F1804 -f2 -b -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
 			samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -o {output.tmp_sort} -n {input}
