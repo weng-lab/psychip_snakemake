@@ -158,7 +158,7 @@ else:
                         samtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input}
+			samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {output.final_bam}
                         """	
 
 rule generate_bedpe:
