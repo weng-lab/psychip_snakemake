@@ -94,7 +94,7 @@ rule macs_callPeaks_inputs:
 		bedtools slop -i peaks/signals/{params.name}_ppois.bdg -g {config[chrom]} -b 0 |\
                 {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.name}.pval.signal.bedgraph
 		
-		rm -rf peaks/singals/{params.name}_ppois.bdg
+		rm -rf peaks/signals/{params.name}_ppois.bdg
 	
 		{config[path]}/bedGraphToBigWig peaks/signals/{params.name}.pval.signal.bedgraph\
 		{config[chrom]} {output.pvalue_signal}
@@ -291,7 +291,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/pst_{params.name}.00_peaks.xls peaks/psr_{params.name}.00_peaks.bed peaks/psr_{params.name}.00_summits.bed
 		
-		rm -f  {output.broadPeak_psr1}-sorted {output.broadPeak_psr1}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -319,7 +319,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/psr_{params.name}.00_peaks.xls peaks/psr_{params.name}.00_peaks.bed peaks/psr_{params.name}.00_summits.bed
 		
-		rm -f  {output.gappedPeak_psr1}-sorted {output.gappedPeak_psr1}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 		#Calling gappedPeaks psr2
 		shell("""
@@ -355,7 +355,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/psr_{params.name}.01_peaks.xls peaks/psr_{params.name}.01_peaks.bed peaks/psr_{params.name}.01_summits.bed
 		
-		rm -f  {output.broadPeak_psr2}-sorted {output.broadPeak_psr2}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -383,7 +383,7 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/psr_{params.name}.01_peaks.xls peaks/psr_{params.name}.01_peaks.bed peaks/psr_{params.name}.01_summits.bed
 		
-		rm -f  {output.gappedPeak_psr2}-sorted {output.gappedPeak_psr2}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		touch logs/{params.name}.done
 		""")
 
@@ -478,7 +478,7 @@ rule macs_callPeaks_pool:
 		bedtools slop -i peaks/signals/pooled_ppois.bdg -g {config[chrom]} -b 0 |\
                 {config[path]}/bedClip stdin {config[chrom]} peaks/signals/pooled.pval.signal.bedgraph
 		
-		rm -rf peaks/singals/pooled_ppois.bdg
+		rm -rf peaks/signals/pooled_ppois.bdg
 	
 		{config[path]}/bedGraphToBigWig peaks/signals/pooled.pval.signal.bedgraph\
 		{config[chrom]} {output.pvalue_signal}
@@ -490,8 +490,7 @@ rule macs_callPeaks_pool:
 		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_narrow_bb
 		
-		rm -f peaks/pooled.narrowPeak-rescaled
-		rm -f peaks/pooled.narrowPeak-sorted
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 		
 		#Calling gappedPeaks	
@@ -527,7 +526,7 @@ rule macs_callPeaks_pool:
 		
 		rm -f peaks/pooled_peaks.xls peaks/pooled_peaks.bed peaks/pooled_summits.bed
 		
-		rm -f  {output.broadPeak}-sorted {output.broadPeak}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		""")
 
 		# Rescale Col5 scores to range 10-1000 to conform \
@@ -555,7 +554,7 @@ rule macs_callPeaks_pool:
 		
 		rm -f peaks/pooled_peaks.xls peaks/pooled_peaks.bed peaks/pooled_summits.bed
 		
-		rm -f  {output.gappedPeak}-sorted {output.gappedPeak}-rescaled
+		rm -f {sorted_fn} {rescaled_fn} 
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_broad_bb {output.broadPeak}
 		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_broad_bb {config[chrom]} {output.broadPeak_bb}

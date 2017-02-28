@@ -8,7 +8,7 @@ rule remove_badcigar_step2:
 	shell:
 		"""
             	samtools view -@ {threads} -Su {input.sam} |\
-                samtools sort -@ {threads} -T {prefix} -o {output} -
+                samtools sort -@ {threads} -T {params.prefix} -o {output} -
 		"""
 
 rule remove_aberrant_reads:
@@ -44,7 +44,7 @@ if(config["sponge_flag"]):
 	rule sponge_removal:
 		input: "mapped_reads/{sample}.temp"
 		output:	
-			flt = temp("mapped_reads/{sample}.flt.bam"),
+			flt = temp("mapped_reads/{sample}.flt.bam")
 		threads:4
 		message: "Removing sponges"
 		log: "logs/1_filtering/{sample}_filter"
@@ -113,7 +113,7 @@ else:
                         """	
 
 rule generate_bed:
-	input: "mapped_reads/{sample}.sort_name.bam"
+	input: "mapped_reads/{sample}.final.bam"
 	output: 
 		bed = "bed_files/{sample}.bed.gz"
 	threads: 1
@@ -122,6 +122,6 @@ rule generate_bed:
 	shell:
 		"""
 		bedtools bamtobed -i {input} | cut -f1-3 | \
-		config[sort] --parallel={threads} -k1,1 -k2,2n | \
+		{config[sort]} --parallel={threads} -k1,1 -k2,2n | \
                 gzip -c > {output.bed} 
 		"""

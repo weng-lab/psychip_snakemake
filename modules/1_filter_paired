@@ -145,7 +145,6 @@ else:
 	rule samtools_flag_filtering:
 		input: "mapped_reads/{sample}.flt.bam"
 		output:
-			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
 			final_bam = "mapped_reads/{sample}.final.bam",
 			final_bai = "mapped_reads/{sample}.final.bai"
 		threads: 10
@@ -158,19 +157,23 @@ else:
                         samtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}
                         samtools index {output.final_bam} {output.final_bai}
 
-			samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {output.final_bam}
                         """	
 
 rule generate_bedpe:
-	input: "mapped_reads/{sample}.sort_name.bam"
+	input: 
+		final_bam = "mapped_reads/{sample}.final.bam",
 	output: 
+		tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
 		bedpe = "bed_files/{sample}.bedpe.gz"
-	threads: 1
+	threads: 10
+	params:
+		prefix="{sample}_bedpe"
 	message: "Creating bedpe"
 	log: "logs/1_filtering/{sample}_filter"
 	shell:
 		"""
-		bedtools bamtobed -bedpe -mate1 -i {input} |\
+		samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input.final_bam}
+		bedtools bamtobed -bedpe -mate1 -i {output.tmp_sort} |\
                 gzip -c > {output.bedpe} 
 		"""
 
