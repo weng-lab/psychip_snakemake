@@ -50,5 +50,7 @@ rule overlap:
 		sort -k1,1 -k2,2n -o finalPeaks/tmp_{params.prefix}_gapped_bb {output.gapped}
 		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/gappedPeak.as finalPeaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
 		rm -f finalPeaks/tmp_{params.prefix}_gapped_bb
+
+		sleep 120
 		"""
 		

@@ -27,7 +27,7 @@ rule macs_callPeaks_inputs:
 		check = "logs/{sample}_vs_{control}.done"
 	threads:1
 	params:
-		name="{sample}_vs_{control}"
+		name="{sample}_vs_{control}",
 		prefix="{sample}_vs_{control}"
 	log: "logs/5_peakCalling"
 	message: "Calling Peaks using MACS2"
@@ -407,7 +407,7 @@ rule macs_callPeaks_pool:
 		gappedPeak_bb = "peaks/pooled_peaks.gappedPeak.bb"
 	threads:1
 	params:
-		prefix="{sample}_vs_{control}"
+		prefix="pooled_macs"
 	log: "logs/5_peakCalling"
 	message: "Calling Peaks in pooled samples using MACS2"
 	run:
