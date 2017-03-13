@@ -403,6 +403,8 @@ rule macs_callPeaks_pool:
 		gappedPeak_compressed = "peaks/pooled_peaks.gappedPeak.gz",
 		gappedPeak_bb = "peaks/pooled_peaks.gappedPeak.bb"
 	threads:1
+	params:
+		prefix="pooled"	
 	log: "logs/5_peakCalling"
 	message: "Calling Peaks in pooled samples using MACS2"
 	run:
