@@ -20,15 +20,20 @@ FLAG_R = expand("qc/{sample}.raw.flagstat.QC.txt", sample = ALL_SAMPLES)
 
 if config["matching"]:
 	PEAKS = expand("logs/{sample}_vs_{control}.done", zip, sample=config["ips"], control=config["controls"])	
-	FINAL = expand("finalPeaks/{sample}_vs_{control}.narrowPeak",zip, sample = config["ips"], control=config["controls"])
+	FINAL = expand("finalPeaks/{sample}_vs_{control}_final.narrowPeak",zip, sample = config["ips"], control=config["controls"])
 else:
-	PEAKS = expand( "peaks/{sample}_peaks.narrowPeak", sample = config["ips"])
-	FINAL = expand("finalPeaks/{sample}.narrowPeak", sample = config["ips"])
-#	GAPPED = expand("peaks/{sample}_peaks.gappedPeak", sample = config["ips"])
+	PEAKS = expand("peaks/{sample}_peaks.narrowPeak", sample = config["ips"])
+	FINAL = expand("finalPeaks/{sample}_final.narrowPeak", sample = config["ips"])
 	
 		
 rule all:
 	input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + PEAKS + XCOR + POOLED + FINAL
+
+#rule all:
+#	input: PEAKS + POOLED
+
+#rule all:
+#	input: ALL_QC + FLAG_F + FLAG_R + XCOR
 
 if config["matching"]:
 	if config["paired"]:

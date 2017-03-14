@@ -102,8 +102,11 @@ rule macs_callPeaks_inputs:
 		rm -f peaks/{wildcards.sample}_treat_pileup.bdg peaks/{wildcards.sample}_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
-		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
-		rm -f peaks/tmp_{params.prefix}_narrow_bb
+		bedtools slop -i peaks/tmp_{params.prefix}_narrow_bb -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_narrow_bb_clipped
+
+		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb_clipped {config[chrom]} {output.narrowPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_narrow_bb peaks/tmp_{params.prefix}_narrow_bb_clipped
 		
 		rm -f {rescaled_fn} {sorted_fn}
 		""")
@@ -248,11 +251,22 @@ rule macs_callPeaks_inputs:
 		rm -f {rescaled_fn} {sorted_fn}
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
-		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
-		rm -f peaks/tmp_{params.prefix}_broad_bb
+
+		bedtools slop -i peaks/tmp_{params.prefix}_broad_bb -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_broad_bb_clipped
+
+		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb_clipped {config[chrom]} {output.broadPeak_bb}
+
+		rm -f peaks/tmp_{params.prefix}_broad_bb_clipped peaks/tmp_{params.prefix}_broad_bb
+
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
-		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
-		rm -f peaks/tmp_{params.prefix}_gapped_bb
+
+		bedtools slop -i peaks/tmp_{params.prefix}_gapped_bb -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_gapped_bb_clipped
+
+		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb_clipped {config[chrom]} {output.gappedPeak_bb}
+
+		rm -f peaks/tmp_{params.prefix}_gapped_bb_clipped peaks/tmp_{params.prefix}_gapped_bb
 
 		""")
 		
@@ -487,8 +501,12 @@ rule macs_callPeaks_pool:
 		rm -f peaks/pooled_treat_pileup.bdg peaks/pooled_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
-		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
-		rm -f peaks/tmp_{params.prefix}_narrow_bb
+
+		bedtools slop -i peaks/tmp_{params.prefix}_narrow_bb -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_narrow_bb_clipped
+
+		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb_clipped {config[chrom]} {output.narrowPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_narrow_bb peaks/tmp_{params.prefix}_narrow_bb_clipped
 		
 		rm -f {rescaled_fn} {sorted_fn}
 		""")
@@ -557,11 +575,22 @@ rule macs_callPeaks_pool:
 		rm -f {rescaled_fn} {sorted_fn}
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
-		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
-		rm -f peaks/tmp_{params.prefix}_broad_bb
+		
+		bedtools slop -i peaks/tmp_{params.prefix}_broad_bb -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_broad_bb_clipped
+
+		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb_clipped {config[chrom]} {output.broadPeak_bb}
+
+		rm -f peaks/tmp_{params.prefix}_broad_bb  peaks/tmp_{params.prefix}_broad_bb_clipped
+
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
-		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
-		rm -f peaks/tmp_{params.prefix}_gapped_bb
+
+		bedtools slop -i peaks/tmp_{params.prefix}_gapped_bb -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_gapped_bb_clipped
+
+		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb_clipped {config[chrom]} {output.gappedPeak_bb}
+
+		rm -f peaks/tmp_{params.prefix}_gapped_bb peaks/tmp_{params.prefix}_gapped_bb_clipped
 
 		""")
 		
