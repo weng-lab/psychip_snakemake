@@ -4,7 +4,18 @@ rule map_bwa_single:
 	output:
 		temp("mapped_reads/{sample}.raw.sam.gz")
 	threads:10
+	params:
+		prefix = "{sample}"
 	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
 	log: "logs/0_mapping/{sample}_map_single"
 	shell:
 		"bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
+		
+
+
+
+#"""
+#		bwa aln -q 5 -l 32 -k 2 -t {threads} {config[genome]} {input} > {params.prefix}.sai
+#		bwa samse {config[genome]} {params.prefix}.sai {input}  |gzip -c > {output}
+#		rm {params.prefix}.sai
+#		"""
