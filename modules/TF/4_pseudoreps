@@ -4,9 +4,9 @@ rule pseudorepping:
 	output:
 		shuf = temp("bed_files/shuf_{sample}"),
 		psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
-		temp_psr1 = temp("bed_files/psr_{sample}.00.bed"),
+		temp_psr1 = temp("bed_files/psr_{sample}.00.tagAlign"),
 		psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
-		temp_psr2 = temp("bed_files/psr_{sample}.01.bed")
+		temp_psr2 = temp("bed_files/psr_{sample}.01.tagAlign")
 	message:"Generating pseudoreps"
 	log:"logs/4_pseudoreps"
 	threads:4
@@ -15,11 +15,11 @@ rule pseudorepping:
 		#If the file is too big '--random-source' option will fail. That's why the '40000000'
 		zcat {input} | shuf --random-source=<(zcat {input} | head -40000000) > {output.shuf}
 		{config[split]} -d -nl/2 --additional-suffix=\".bed\" {output.shuf} bed_files/psr_{wildcards.sample}.
-		
+
 		{config[sort]} --parallel={threads} -S 2G \
-                     -k1,1 -k2,2n {output.temp_psr1} | gzip -c > {output.psr1} 
+                     -k1,1 -k2,2n {output.temp_psr1} | gzip -c > {output.psr1}
 		{config[sort]} --parallel={threads} -S 2G \
-                     -k1,1 -k2,2n {output.temp_psr2} | gzip -c > {output.psr2} 
+                     -k1,1 -k2,2n {output.temp_psr2} | gzip -c > {output.psr2}
 		"""
 
 
