@@ -1,0 +1,32 @@
+
+rule idr:
+	input:
+		narrowPeak= "peaks_spp/{sample}/{sample}.tagAlign.final.regionPeak.gz",
+		narrowPeak_psr1= "peaks_spp/psr00_{sample}/psr_{sample}.00.tagAlign.final.regionPeak.gz",
+		narrowPeak_psr2= "peaks_spp/psr01_{sample}/psr_{sample}.01.tagAlign.final.regionPeak.gz",
+	output:
+		idr= "idr/{sample}_overlapped-peaks.txt",
+		idr_raw = "idr/{sample}.IDR0.05.raw.narrowPeak.gz",
+		idr_final = "idr/{sample}.IDR0.05.final.narrowPeak.gz"
+			
+	threads:1
+	params:
+		threshold = "0.05",
+		prefix = "{sample}"
+	message: "Final overlap of the peaks"
+	log: "logs/6_overlap"
+	shell:
+		"""
+		idr --samples {input.narrowPeak_psr1} {input.narrowPeak_psr2} --peak-list {input.narrowPeak} --input-file-type narrowPeak --output-file {output.outdir} --rank signal.value --soft-idr-threshold {params.threshold} --plot --use-best-multisummit-IDR
+
+		IDR_THRESH_TRANSFORMED=`awk -v p={params.threshold} 'BEGIN{{print -log(p)/log(10)}}'`
+		
+		awk 'BEGIN{{OFS="\t"}} $12>='"$IDR_THRESH_TRANSFORMED"' {{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10}}' {output.idr} | sort | uniq | sort -k7n,7n | gzip -nc > {output.idr_raw}
+
+		NPEAKS_IDR=`zcat {output.idr_raw} | wc -l`
+
+		bedtools intersect -v -a {output.idr_raw} -b {config[path]}/blacklist_hg19.bed.gz | grep -P 'chr[\dXY]+[ \t]' | awk 'BEGIN{{OFS="\t"}} {{if ($5>1000) $5=1000; print $0}}| gzip -nc > {output.idr_final}
+		
+		sleep 120
+		"""
+		

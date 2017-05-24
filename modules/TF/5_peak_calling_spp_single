@@ -1,0 +1,66 @@
+
+rule macs_callPeaks_inputs:
+	input: 
+		control = "bed_files/pooled_controls.tagAlign.gz",
+		ip = "bed_files/{sample}.tagAlign.gz",
+		ip_psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
+		ip_psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
+		cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
+	output:
+		narrowPeak_raw = temp("peaks_spp/{sample}/{sample}.tagAlign.regionPeak.gz"),
+		narrowPeak_unfiltered = "peaks_spp/{sample}/{sample}.tagAlign.unfiltered.regionPeak.gz",
+		narrowPeak_final = "peaks_spp/{sample}/{sample}.tagAlign.final.regionPeak.gz"
+
+		narrowPeak_raw_0 = temp("peaks_spp/psr00_{sample}/psr_{sample}.00.tagAlign.regionPeak.gz"),
+		narrowPeak_unfiltered_0 = "peaks_spp/psr00_{sample}/psr_{sample}.00.tagAlign.unfiltered.regionPeak.gz",
+		narrowPeak_final_0 = "peaks_spp/psr00_{sample}/psr_{sample}.00.tagAlign.final.regionPeak.gz"
+
+		narrowPeak_raw_1 = temp("peaks_spp/psr01_{sample}/psr_{sample}.01.tagAlign.regionPeak.gz"),
+		narrowPeak_unfiltered_1 = "peaks_spp/psr01_{sample}/psr_{sample}.01.tagAlign.unfiltered.regionPeak.gz",
+		narrowPeak_final_1 = "peaks_spp/psr01_{sample}/psr_{sample}.01.tagAlign.final.regionPeak.gz"
+	threads:1
+	params:
+		prefix = "{sample}"
+	log: "logs/5_peakCalling"
+	message: "Calling Peaks using SPP"
+	shell:
+		"""
+		fraglen=`cat {input.cc_scores} | cut -f3`
+
+		#REP
+		Rscript {config[path]}/run_spp_nodups.R -c={input.ip} -i={input.control} -npeak=300000 -odir=peaks_spp/{params.prefix} -speak=$fraglen -savr -savp -rf -out=peaks_spp/{params.prefix}/{params.prefix}.tagAlign.ccscores 
+
+		zcat {output.narrowPeak_raw} | \
+		awk 'BEGIN{{OFS="\t"}}{{ if ($2<0) $2=0; print $1,int($2),int($3),$4,$5,$6,$7,$8,$9,$10;}}' | \
+		gzip -f -nc > {output.narrowPeak_unfiltered}
+		
+		bedtools intersect -v -a <(zcat -f {output.narrowPeak_unfiltered}) -b <(zcat -f {config[path]}/blacklist_hg19.bed.gz) | \
+		awk 'BEGIN{{OFS="\t"}} {{if ($5>1000) $5=1000; print $0}}' | \
+		grep -P 'chr[\dXY]+[ \t]' | \
+		gzip -nc > {narrowPeak_final}
+
+
+		#SELF-PSEUDOREP1
+		Rscript {config[path]}/run_spp_nodups.R -c={input.ip_psr1} -i={input.control} -npeak=300000 -odir=peaks_spp/psr00_{params.prefix} -speak=$fraglen -savr -savp -rf -out={params.odir}/psr00_{params.prefix}/psr_{params.prefix}.00.tagAlign.ccscores 
+
+		zcat {output.narrowPeak_raw_0} | \
+		awk 'BEGIN{{OFS="\t"}}{{ if ($2<0) $2=0; print $1,int($2),int($3),$4,$5,$6,$7,$8,$9,$10;}}' | \
+		gzip -f -nc > {output.narrowPeak_unfiltered_0}
+		
+		bedtools intersect -v -a <(zcat -f {output.narrowPeak_unfiltered_0}) -b <(zcat -f {config[path]}/blacklist_hg19.bed.gz) | \
+		awk 'BEGIN{{OFS="\t"}} {{if ($5>1000) $5=1000; print $0}}' | \
+		grep -P 'chr[\dXY]+[ \t]' | \
+		gzip -nc > {narrowPeak_final_0}
+
+		#SELF-PSEUDOREP2
+		Rscript {config[path]}/run_spp_nodups.R -c={input.ip_psr2} -i={input.control} -npeak=300000 -odir=peaks_spp/psr01_{params.prefix} -speak=$fraglen -savr -savp -rf -out={params.odir}/psr01_{params.prefix}/psr_{params.prefix}.01.tagAlign.ccscores 
+
+		zcat {output.narrowPeak_raw_1} | \
+		awk 'BEGIN{{OFS="\t"}}{{ if ($2<0) $2=0; print $1,int($2),int($3),$4,$5,$6,$7,$8,$9,$10;}}' | \
+		gzip -f -nc > {output.narrowPeak_unfiltered_1}
+		
+		bedtools intersect -v -a <(zcat -f {output.narrowPeak_unfiltered_1}) -b <(zcat -f {config[path]}/blacklist_hg19.bed.gz) | \
+		awk 'BEGIN{{OFS="\t"}} {{if ($5>1000) $5=1000; print $0}}' | \
+		grep -P 'chr[\dXY]+[ \t]' | \
+		gzip -nc > {narrowPeak_final_1}
+		"""

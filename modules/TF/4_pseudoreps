@@ -1,0 +1,46 @@
+
+rule pseudorepping:
+	input:"bed_files/{sample}.tagAlign.gz"
+	output:
+		shuf = temp("bed_files/shuf_{sample}"),
+		psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
+		temp_psr1 = temp("bed_files/psr_{sample}.00.bed"),
+		psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
+		temp_psr2 = temp("bed_files/psr_{sample}.01.bed")
+	message:"Generating pseudoreps"
+	log:"logs/4_pseudoreps"
+	threads:4
+	shell:
+		"""
+		#If the file is too big '--random-source' option will fail. That's why the '40000000'
+		zcat {input} | shuf --random-source=<(zcat {input} | head -40000000) > {output.shuf}
+		{config[split]} -d -nl/2 --additional-suffix=\".bed\" {output.shuf} bed_files/psr_{wildcards.sample}.
+		
+		{config[sort]} --parallel={threads} -S 2G \
+                     -k1,1 -k2,2n {output.temp_psr1} | gzip -c > {output.psr1} 
+		{config[sort]} --parallel={threads} -S 2G \
+                     -k1,1 -k2,2n {output.temp_psr2} | gzip -c > {output.psr2} 
+		"""
+
+
+rule pooling_input:
+	input: expand("bed_files/{sample}.tagAlign.gz",sample = config["ips"])
+	output: "bed_files/pooled_inputs.tagAlign.gz"
+	message: "Pooling inputs together"
+	log: "logs/4_pseudoreps"
+	threads:4
+	shell:
+		"""
+		zcat {input} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
+		"""
+
+rule pooling_control:
+	input: expand("bed_files/{sample}.tagAlign.gz",sample = config["controls"])
+	output: "bed_files/pooled_controls.tagAlign.gz"
+	message: "Pooling controls together"
+	log: "logs/4_pseudoreps"
+	threads:4
+	shell:
+		"""
+		zcat {input} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
+		"""

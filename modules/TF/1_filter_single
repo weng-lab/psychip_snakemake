@@ -1,0 +1,117 @@
+
+rule remove_aberrant_reads:
+	input: "mapped_reads/{sample}.raw.bam"
+	output: 
+		flt = temp("mapped_reads/{sample}.flt.tmp.bam"),
+	threads: 4
+	message: "Removing unmapped,mate unmapped,notprimary alignment, reads failing platform, low MAPQ reads."
+	log: "logs/1_filtering/{sample}_filter"
+	shell:
+		"""
+			samtools view -@ {threads} -F 1804 -q 20 \
+                        -b {input} -o {output.flt}
+		"""
+
+if(config["sponge_flag"]):
+	rule remove_artifacts:
+		input: "mapped_reads/{sample}.flt.tmp.bam"
+		output: 
+			temp = temp("mapped_reads/{sample}.temp"),
+			qc = "qc/{sample}.pcrDups.QC.txt"
+		threads: 4
+		message: "Removing aberrant reads and marking PCR duplicates"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+			"""
+			java -Xmx4G -jar {config[path]}/picard-tools-1.141/picard.jar MarkDuplicates\
+			INPUT={input} OUTPUT={output.temp} \
+			METRICS_FILE={output.qc} ASSUME_SORTED=true \
+			VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=false
+			 
+			"""
+	rule sponge_removal:
+		input: "mapped_reads/{sample}.temp"
+		output:	
+			flt = temp("mapped_reads/{sample}.flt.bam")
+		threads:4
+		message: "Removing sponges"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+			"""
+			samtools view -@ {threads} -h {input} |\
+                        grep -vF -f {config[sponges]} - |\
+                        samtools view -@ {threads} -b -o {output.flt} -
+
+			"""
+
+	rule samtools_flag_filtering:
+		input: "mapped_reads/{sample}.flt.bam"
+		output:
+			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
+			final_bam = "mapped_reads/{sample}.final.bam",
+			final_bai = "mapped_reads/{sample}.final.bai"
+		threads: 4
+		params:
+			prefix="{sample}_final"
+		message: "Filtering out bad samtools flags"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+                        """
+                        samtools view -@ {threads} -F1804 -b -o {output.final_bam} {input}
+                        samtools index {output.final_bam} {output.final_bai}
+
+			samtools sort -@ {threads} -n -T {params.prefix} -o {output.tmp_sort} {input}
+                        """	
+			
+else:
+	rule remove_artifacts:
+		input: "mapped_reads/{sample}.flt.tmp.bam"
+		output: 
+			flt = temp("mapped_reads/{sample}.flt.bam"),
+			qc = "qc/{sample}.pcrDups.QC.txt"
+		threads: 4
+		message: "Removing aberrant reads and marking PCR duplicates"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+			"""
+			java -Xmx4G -jar {config[path]}/picard-tools-1.141/picard.jar MarkDuplicates\
+			INPUT={input} OUTPUT={output.flt} \
+			METRICS_FILE={output.qc} ASSUME_SORTED=true \
+			VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=false
+			 
+			"""
+	
+	rule samtools_flag_filtering:
+		input: "mapped_reads/{sample}.flt.bam"
+		output:
+			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
+			final_bam = "mapped_reads/{sample}.final.bam",
+			final_bai = "mapped_reads/{sample}.final.bai"
+		threads: 4
+		params:
+			prefix="{sample}_final"
+		message: "Filtering out bad samtools flags"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+                        """
+                        samtools view -@ {threads} -F1804 -b -o {output.final_bam} {input}
+                        samtools index {output.final_bam} {output.final_bai}
+
+			samtools sort -@ {threads} -n -T {params.prefix} -o {output.tmp_sort} {input}
+                        """	
+
+rule generate_bed:
+	input: "mapped_reads/{sample}.final.bam"
+	output: 
+		tagAlign = "bed_files/{sample}.tagAlign.gz"
+	threads: 1
+	message: "Creating tagAlign."
+	log: "logs/1_filtering/{sample}_filter"
+	shell:
+		"""
+		bedtools bamtobed -i {input} | \
+		awk 'BEGIN{{OFS="\t"}}{{$4="N";$5="1000";print $0}}' | \
+		{config[sort]} --parallel={threads} -k1,1 -k2,2n | \
+		gzip -nc > {output.tagAlign} 
+		"""
+

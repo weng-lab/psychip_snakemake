@@ -1,0 +1,46 @@
+
+rule mapstats_final:
+	input: 
+		final = "mapped_reads/{sample}.final.bam"
+	output:
+		final_mapstats = "qc/{sample}.final.flagstat.QC.txt"
+	message: "Quality control check: Generating mapstats"
+	log: "logs/2_qc/{sample}.qc"
+	shell: "samtools flagstat {input.final} > {output.final_mapstats}"
+
+rule mapstats_raw:
+	input: 
+		raw = "mapped_reads/{sample}.raw.bam"
+	output:
+		raw_mapstats = "qc/{sample}.raw.flagstat.QC.txt"
+	message: "Quality control check: Generating mapstats"
+	log: "logs/2_qc/{sample}.qc"
+	shell: "samtools flagstat {input.raw} > {output.raw_mapstats}"
+
+
+rule library_complexity:
+	input:
+		flt = "mapped_reads/{sample}.flt.bam"
+	output:
+		lib_complexity = "qc/{sample}.libComplexity.QC.txt",
+		tmp_sort_bam = temp("qc/{sample}.flt.tmp.sort.bam")
+	threads: 4
+	params:
+		prefix="{sample}"
+	message: "Quality control: Computing library complexity"
+	log: "logs/2_qc/{sample}.qc"
+	shell:
+		"""
+		samtools sort -n -@ {threads} -T {params.prefix} -o {output.tmp_sort_bam} {input.flt}
+		echo 1 | \
+                     awk '{{print "#TotalReadPairs\tDistinctReadPairs\tOneReadPair\tTwoReadPairs\tNRF=Distinct/Total\tPBC1=OnePair/Distinct\tPBC2=OnePair/TwoPair"}}' \
+                     > {output.lib_complexity}
+		
+		bedtools bamtobed -i {output.tmp_sort_bam} | \
+                     awk 'BEGIN{{OFS="\t"}}{{print $1,$2,$3,$6}}' | \
+                     grep -v 'chrM' | sort | uniq -c | \
+                     awk 'BEGIN{{mt=0;m0=0;m1=0;m2=0; OFS="\t"}}
+                               ($1==1){{m1=m1+1}} ($1==2){{m2=m2+1}} {{m0=m0+1}} {{mt=mt+$1}}
+                          END{{if(m2>0) {{print mt,m0,m1,m2,m0/mt,m1/m0,m1/m2}}else{{print mt,m0,m1,m2,m0/mt,m1/m0,"-INF"}}}}'\
+                     >> {output.lib_complexity}
+		"""
