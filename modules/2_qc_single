@@ -37,7 +37,7 @@ rule library_complexity:
                      > {output.lib_complexity}
 		
 		bedtools bamtobed -i {output.tmp_sort_bam} | \
-                     awk 'BEGIN{{OFS="\t"}}{{print $1,$2,$4,$6}}' | \
+                     awk 'BEGIN{{OFS="\t"}}{{print $1,$2,$3,$6}}' | \
                      grep -v 'chrM' | sort | uniq -c | \
                      awk 'BEGIN{{mt=0;m0=0;m1=0;m2=0; OFS="\t"}}
                                ($1==1){{m1=m1+1}} ($1==2){{m2=m2+1}} {{m0=m0+1}} {{mt=mt+$1}}

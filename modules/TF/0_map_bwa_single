@@ -1,19 +1,18 @@
-
 rule map_bwa_single:
 	input: "samples/{sample}.fastq.gz"
 	output:
-		sam = temp("mapped_reads/{sample}.raw.sam.gz")
+		sam = temp("mapped_reads/{sample}.raw.sam.gz"),
 		bam = "mapped_reads/{sample}.raw.bam"
 	threads:10
 	params:
 		prefix = "{sample}"
-	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
+	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output.sam}"
 	log: "logs/0_mapping/{sample}_map_single"
 	shell:
 		"""
 		bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output.sam}
 		
-		samtools view -@ {threads} -Su {output} | samtools sort -@ {threads} -T {params.prefix} -o  {output.bam}
+		samtools view -@ {threads} -Su {output.sam} | samtools sort -@ {threads} -T {params.prefix} -o  {output.bam}
 		"""
 		
 

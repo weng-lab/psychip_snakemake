@@ -25,7 +25,7 @@ rule overlap:
 	shell:
 		"""
 		bedtools intersect \
-                     -a {input.narrowPeak} -b {input.narrowPeak_psr1} -f 0.50 -F 0.50 -e |\
+                     -a {input.narrowPeak} -b {input.narrowPeak_psr1} -f 0.50 -F 0.50 -e -u |\
                      bedtools intersect \
                      -a stdin -b {input.narrowPeak_psr2} -f 0.50 -F 0.50 -e -u > {output.narrow}
 
@@ -34,7 +34,7 @@ rule overlap:
 		rm -f finalPeaks/tmp_{params.prefix}_narrow_bb
 
 		bedtools intersect \
-                     -a {input.broadPeak} -b {input.broadPeak_psr1} -f 0.50 -F 0.50 -e |\
+                     -a {input.broadPeak} -b {input.broadPeak_psr1} -f 0.50 -F 0.50 -e -u |\
                      bedtools intersect \
                      -a stdin -b {input.broadPeak_psr2} -f 0.50 -F 0.50 -e -u > {output.broad}
 
@@ -43,7 +43,7 @@ rule overlap:
 		rm -f finalPeaks/tmp_{params.prefix}_broad_bb
 
 		bedtools intersect \
-                     -a {input.gappedPeak} -b {input.gappedPeak_psr1} -f 0.50 -F 0.50 -e |\
+                     -a {input.gappedPeak} -b {input.gappedPeak_psr1} -f 0.50 -F 0.50 -e -u |\
                      bedtools intersect \
                      -a stdin -b {input.gappedPeak_psr2} -f 0.50 -F 0.50 -e -u > {output.gapped}
 

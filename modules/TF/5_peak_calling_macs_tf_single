@@ -1,42 +1,92 @@
-
 rule macs_callPeaks_inputs_narrow:
 	input:
 		control = "bed_files/pooled_controls.tagAlign.gz",
 		ip = "bed_files/{sample}.tagAlign.gz",
 		cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
 	output:
-		narrowPeak = temp("peaks/{sample}_peaks.narrowPeak"),
-		narrowPeak_compressed = "peaks/{sample}_peaks.narrowPeak.gz",
-		treat = temp("peaks/{sample}_treat_pileup.bdg"),
-		control_lambda = temp("peaks/{sample}_control_lambda.bdg"),
-		checkpoint = temp("peaks/narrow_{sample}.done")
+		narrowPeak = temp("peaks/{sample,\w+}_peaks.narrowPeak"),
+		narrowPeak_compressed = "peaks/{sample,\w+}_peaks.narrowPeak.gz",
+		treat = temp("peaks/{sample,\w+}_treat_pileup.bdg"),
+		control_lambda = temp("peaks/{sample,\w+}_control_lambda.bdg"),
+		checkpoint = temp("peaks/narrow_{sample,\w+}.done")
 	threads:1
 	params:
 		prefix="{sample}"
 	log: "logs/5_peakCalling"
-	message: "Calling Narrow Peaks for Individual [{sample}] using MACS2"
+	message: "Calling Narrow Peaks for Individual [{wildcards.sample}] using MACS2"
 	shell:
 		"""
 		fraglen=`cat {input.cc_scores} | cut -f3`
 
 		{config[macs2]} callpeak \
-                  -t {input.ip} -c {input.control}\
-                  -f BED -n peaks/{params.prefix}\
-                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
-                  --keep-dup all -B --SPMR
+		-t {input.ip} -c {input.control}\
+		-f BED -n peaks/{params.prefix}\
+		-g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
+		--keep-dup all -B --SPMR
 
 		sort -k 8gr,8gr {output.narrowPeak} |\
-		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
 		gzip -nc > {output.narrowPeak_compressed}
 
 		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_summits.bed
 		touch {output.checkpoint}
 		"""
 
+rule macs_callPeaks_psr_narrow:
+	input:
+		control = "bed_files/pooled_controls.tagAlign.gz",
+		ip_psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
+		ip_psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
+		cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
+	output:
+		narrowPeak_psr1 = "peaks/psr_{sample}.00_peaks.narrowPeak",
+		narrowPeak_psr1_compressed = "peaks/psr_{sample}.00_peaks.narrowPeak.gz",
+		narrowPeak_psr2 = "peaks/psr_{sample}.01_peaks.narrowPeak",
+		narrowPeak_psr2_compressed = "peaks/psr_{sample}.01_peaks.narrowPeak.gz",
+		treat_1 = temp("peaks/psr_{sample}.00_treat_pileup.bdg"),
+		control_lambda_1 = temp("peaks/psr_{sample}.00_control_lambda.bdg"),
+		treat_2 = temp("peaks/psr_{sample}.01_treat_pileup.bdg"),
+		control_lambda_2 = temp("peaks/psr_{sample}.01_control_lambda.bdg"),
+		checkpoint = temp("peaks/narrow_psr_{sample}.done")
+	threads:1
+	params:
+		prefix="psr_{sample}.00",
+		prefix_2="psr_{sample}.01"
+	log: "logs/5_peakCalling"
+	message: "Calling Narrow Peaks for self-Pseudoreps of Individual [{wildcards.sample}] using MACS2"
+	shell:
+		"""
+		fraglen=`cat {input.cc_scores} | cut -f3`
+
+		{config[macs2]} callpeak \
+		-t {input.ip_psr1} -c {input.control}\
+		-f BED -n peaks/{params.prefix}\
+		-g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
+		--keep-dup all -B --SPMR
+
+		sort -k 8gr,8gr {output.narrowPeak_psr1} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
+		gzip -nc > {output.narrowPeak_psr1_compressed}
+
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_summits.bed
+
+		{config[macs2]} callpeak \
+		-t {input.ip_psr2} -c {input.control}\
+		-f BED -n peaks/{params.prefix_2}\
+		-g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
+		 --keep-dup all -B --SPMR
+
+		sort -k 8gr,8gr {output.narrowPeak_psr2} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
+		gzip -nc > {output.narrowPeak_psr2_compressed}
+
+		rm -f peaks/{params.prefix_2}_peaks.xls peaks/{params.prefix_2}_summits.bed
+		touch {output.checkpoint}
+		"""
+
 
 rule macs_callPeaks_inputs_broad:
 	input:
-		checkpoint = "peaks/narrow_{sample}.done"
 		control = "bed_files/pooled_controls.tagAlign.gz",
 		ip = "bed_files/{sample}.tagAlign.gz",
 		cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
@@ -48,23 +98,23 @@ rule macs_callPeaks_inputs_broad:
 	params:
 		prefix="{sample}"
 	log: "logs/5_peakCalling"
-	message: "Calling Broad Peaks for Individual [{sample}] using MACS2"
+	message: "Calling Broad Peaks for Individual [{wildcards.sample}] using MACS2"
 	shell:
 		"""
 		fraglen=`cat {input.cc_scores} | cut -f3`
 
 		{config[macs2]} callpeak \
 		-t {input.ip} -c {input.control}\
-    -f BED -n peaks/{params.prefix}\
-    -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
-    --keep-dup all
+		-f BED -n peaks/{params.prefix}\
+		-g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
+		--keep-dup all
 
 		sort -k 8gr,8gr {output.broadPeak} | \
-		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
 		gzip -nc > {output.broadPeak_compressed}
 
 		sort -k 14gr,14gr {output.broadPeak} | \
-		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
 		gzip -nc > {output.gappedPeak_compressed}
 
 
@@ -81,7 +131,6 @@ rule macs_signal_tracks:
 		treat = "peaks/{sample}_treat_pileup.bdg",
 		control_lambda = "peaks/{sample}_control_lambda.bdg"
 	output:
-		pvalue_signal = "peaks/signals/{sample}.pvalue_signal.bw",
 		fe_bdg = temp("peaks/signals/{sample}_FE.bdg"),
 		fc_signal_bdg = temp("peaks/signals/{sample}.fc.signal.bedgraph"),
 		fc_signal = "peaks/signals/{sample}.fc_signal.bw",
@@ -92,27 +141,27 @@ rule macs_signal_tracks:
 	params:
 		prefix="{sample}"
 	log: "logs/5_peakCalling"
-	message: "Computing Signal Track for Individual [{sample}] using MACS2"
+	message: "Computing Signal Track for Individual [{wildcards.sample}] using MACS2"
 	shell:
 		"""
 		{config[macs2]} bdgcmp  \
-                 -t {input.treat} -c {input.control_lambda} \
-                 --outdir peaks/signals -o {output.fe_bdg} -m FE
+		-t {input.treat} -c {input.control_lambda} \
+		--outdir peaks/signals -o {params.prefix}_FE.bdg -m FE
 
 		bedtools slop -i {output.fe_bdg} -g {config[chrom]} -b 0 |\
 		awk '{{ if($3!=-1) print $0}}' | \
-                {config[path]}/bedClip stdin {config[chrom]} {output.fc_signal_bdg}
+		{config[path]}/bedClip stdin {config[chrom]} {output.fc_signal_bdg}
 
 
 		{config[path]}/bedGraphToBigWig {output.fc_signal_bdg} {config[chrom]} {output.fc_signal}
 
 
 		chipReads=$(zcat {input.ip} | wc -l | awk '{{printf "%f", $1/1000000}}');
-		controlReads=$(zcat {control.ip} | wc -l | awk '{{printf "%f", $1/1000000}}');
+		controlReads=$(zcat {input.control} | wc -l | awk '{{printf "%f", $1/1000000}}');
 
-		sval=$(echo "${chipReads} ${controlReads}" | awk '$1>$2{{printf "%f",$2}} $1<=$2{{printf "%f",$1}}');
+		sval=$(echo "${{chipReads}} ${{controlReads}}" | awk '$1>$2{{printf "%f",$2}} $1<=$2{{printf "%f",$1}}');
 
-		macs2 bdgcmp -t {input.treat} -c {input.control_lambda} --outdir peaks/signals -o {output.ppois} -m ppois -S ${sval}
+		macs2 bdgcmp -t {input.treat} -c {input.control_lambda} --outdir peaks/signals -o {params.prefix}_ppois.bdg -m ppois -S ${{sval}}
 
 		slopBed -i {output.ppois} -g {config[chrom]} -b 0 | \
 		awk '{{if ($3 != -1) print $0}}' |  \
@@ -123,118 +172,67 @@ rule macs_signal_tracks:
 		"""
 
 
-rule macs_callPeaks_psr_narrow:
-			input:
-				control = "bed_files/pooled_controls.tagAlign.gz",
-				ip_psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
-				ip_psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
-				cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
-			output:
-				narrowPeak_psr1 = "peaks/psr_{sample}.00_peaks.narrowPeak",
-				narrowPeak_psr1_compressed = "peaks/psr_{sample}.00_peaks.narrowPeak.gz",
-				narrowPeak_psr2 = "peaks/psr_{sample}.01_peaks.narrowPeak",
-				narrowPeak_psr2_compressed = "peaks/psr_{sample}.01_peaks.narrowPeak.gz",
-				treat = temp("peaks/psr_{sample}.00_treat_pileup.bdg"),
-				control_lambda = temp("peaks/psr_{sample}.00_control_lambda.bdg"),
-				treat = temp("peaks/psr_{sample}.01_treat_pileup.bdg"),
-				control_lambda = temp("peaks/psr_{sample}.01_control_lambda.bdg"),
-				checkpoint = temp("peaks/narrow_psr_{sample}.done");
-			threads:1
-			params:
-				prefix="psr_{sample}.00",
-				prefix_2="psr_{sample}.01"
-			log: "logs/5_peakCalling"
-			message: "Calling Narrow Peaks for self-Pseudoreps of Individual [{sample}] using MACS2"
-			shell:
-				"""
-				fraglen=`cat {input.cc_scores} | cut -f3`
-
-				{config[macs2]} callpeak \
-		                  -t {input.ip} -c {input.control}\
-		                  -f BED -n peaks/{params.prefix}\
-		                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
-		                  --keep-dup all -B --SPMR
-
-				sort -k 8gr,8gr {output.narrowPeak_psr1} |\
-				awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
-				gzip -nc > {output.narrowPeak_psr1_compressed}
-
-				rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_summits.bed
-
-				{config[macs2]} callpeak \
-		                  -t {input.ip} -c {input.control}\
-		                  -f BED -n peaks/{params.prefix_2}\
-		                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
-		                  --keep-dup all -B --SPMR
-
-				sort -k 8gr,8gr {output.narrowPeak_psr2} |\
-				awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
-				gzip -nc > {output.narrowPeak_psr2_compressed}
-
-				rm -f peaks/{params.prefix_2}_peaks.xls peaks/{params.prefix_2}_summits.bed
-				touch {output.checkpoint}
-				"""
 
 rule macs_callPeaks_psr_broad:
-			input:
-				checkpoint = "peaks/narrow_psr_{sample}.done",
-				control = "bed_files/pooled_controls.tagAlign.gz",
-				ip_psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
-				ip_psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
-				cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
-			output:
-				broadPeak_psr1 = "peaks/psr_{sample}.00_peaks.broadPeak",
-				broadPeak_psr2_compressed = "peaks/psr_{sample}.01_peaks.broadPeak.gz",
-				gappedPeak_psr1 = "peaks/psr_{sample}.00_peaks.gappedPeak",
-				gappedPeak_psr2_compressed = "peaks/psr_{sample}.01_peaks.gappedPeak.gz"
-			threads:1
-			params:
-				prefix="psr_{sample}.00",
-				prefix_2="psr_{sample}.01"
-			log: "logs/5_peakCalling"
-			message: "Calling Broad Peaks for self-Pseudoreps of Individual [{sample}] using MACS2"
-			shell:
-				"""
-				fraglen=`cat {input.cc_scores} | cut -f3`
+	input:
+		control = "bed_files/pooled_controls.tagAlign.gz",
+		ip_psr1 = "bed_files/psr_{sample}.00.tagAlign.gz",
+		ip_psr2 = "bed_files/psr_{sample}.01.tagAlign.gz",
+		cc_scores = "xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc"
+	output:
+		broadPeak_psr1 = "peaks/psr_{sample}.00_peaks.broadPeak",
+		broadPeak_psr1_compressed = "peaks/psr_{sample}.00_peaks.broadPeak.gz",
+		gappedPeak_psr1 = "peaks/psr_{sample}.00_peaks.gappedPeak",
+		gappedPeak_psr1_compressed = "peaks/psr_{sample}.00_peaks.gappedPeak.gz",
+		broadPeak_psr2 = "peaks/psr_{sample}.01_peaks.broadPeak",
+		broadPeak_psr2_compressed = "peaks/psr_{sample}.01_peaks.broadPeak.gz",
+		gappedPeak_psr2 = "peaks/psr_{sample}.01_peaks.gappedPeak",
+		gappedPeak_psr2_compressed = "peaks/psr_{sample}.01_peaks.gappedPeak.gz"
+	threads:1
+	params:
+		prefix="psr_{sample}.00",
+		prefix_2="psr_{sample}.01"
+	log: "logs/5_peakCalling"
+	message: "Calling Broad Peaks for self-Pseudoreps of Individual [{wildcards.sample}] using MACS2"
+	shell:
+		"""
+		fraglen=`cat {input.cc_scores} | cut -f3`
 
-				{config[macs2]} callpeak \
-		                  -t {input.ip_psr1} -c {input.control}\
-		                  -f BED -n peaks/{params.prefix}\
-		                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
-		                  --keep-dup all
+		{config[macs2]} callpeak \
+		  -t {input.ip_psr1} -c {input.control}\
+		  -f BED -n peaks/{params.prefix}\
+		  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
+		  --keep-dup all
 
-				sort -k 8gr,8gr {output.broadPeak_psr1} | \
-				awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
-				gzip -nc > {output.broadPeak_psr1_compressed}
+		sort -k 8gr,8gr {output.broadPeak_psr1} | \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
+		gzip -nc > {output.broadPeak_psr1_compressed}
 
-				sort -k 14gr,14gr {output.broadPeak_psr1} | \
-				awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
-				gzip -nc > {output.gappedPeak_psr1_compressed}
-
-
-				rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_summits.bed
-
-
-				{config[macs2]} callpeak \
-											-t {input.ip_psr2} -c {input.control}\
-											-f BED -n peaks/{params.prefix_2}\
-											-g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
-											--keep-dup all
-
-				sort -k 8gr,8gr {output.broadPeak_psr2} | \
-				awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
-				gzip -nc > {output.broadPeak_psr2_compressed}
-
-				sort -k 14gr,14gr {output.broadPeak_psr2} | \
-				awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
-				gzip -nc > {output.gappedPeak_psr2_compressed}
+		sort -k 14gr,14gr {output.broadPeak_psr1} | \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
+		gzip -nc > {output.gappedPeak_psr1_compressed}
 
 
-				rm -f peaks/{params.prefix_2}_peaks.xls peaks/{params.prefix_2}_summits.bed
-				"""
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_summits.bed
 
-		pvalue_signal = "peaks/signals/pooled.pvalue_signal.bw",
-		fc_signal = "peaks/signals/pooled.fc_signal.bw",
+
+		{config[macs2]} callpeak \
+		-t {input.ip_psr2} -c {input.control}\
+		-f BED -n peaks/{params.prefix_2}\
+		-g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
+		--keep-dup all
+
+		sort -k 8gr,8gr {output.broadPeak_psr2} | \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
+		gzip -nc > {output.broadPeak_psr2_compressed}
+
+		sort -k 14gr,14gr {output.broadPeak_psr2} | \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
+		gzip -nc > {output.gappedPeak_psr2_compressed}
+
+
+		rm -f peaks/{params.prefix_2}_peaks.xls peaks/{params.prefix_2}_summits.bed
+		"""
 
 rule macs_callPeaks_pool_narrow:
 	input:
@@ -246,10 +244,10 @@ rule macs_callPeaks_pool_narrow:
 		narrowPeak_compressed = "peaks/pooled_peaks.narrowPeak.gz",
 		treat = temp("peaks/pooled_treat_pileup.bdg"),
 		control_lambda = temp("peaks/pooled_control_lambda.bdg"),
-		checkpoint = temp(peaks/narrow_pooled.done)
+		checkpoint = temp("peaks/narrow_pooled.done")
 	threads:1
 	params:
-		prefix="{pooled}"
+		prefix="pooled"
 	log: "logs/5_peakCalling"
 	message: "Calling Narrow Peaks for Pooled Individuals using MACS2"
 	run:
@@ -271,7 +269,7 @@ rule macs_callPeaks_pool_narrow:
                   --keep-dup all -B --SPMR
 
 		sort -k 8gr,8gr {output.narrowPeak} |\
-		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
 		gzip -nc > {output.narrowPeak_compressed}
 
 		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_summits.bed
@@ -281,7 +279,6 @@ rule macs_callPeaks_pool_narrow:
 
 rule macs_callPeaks_pool_broad:
 	input:
-		checkpoint = "peaks/narrow_pooled.done",
 		control = "bed_files/pooled_controls.tagAlign.gz",
 		ip = "bed_files/pooled_inputs.tagAlign.gz",
 		cc_scores = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample=config["ips"])
@@ -305,21 +302,21 @@ rule macs_callPeaks_pool_broad:
 				with open(file,'r') as f:
 					sum_len+=int(f.readlines()[0].split("\t")[2])
 		fraglen=int(sum_len/n_files)
-	shell("""
-		fraglen=`cat {input.cc_scores} | cut -f3`
+		
+		shell("""
 
 		{config[macs2]} callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BED -n peaks/{params.prefix}\
-                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
+                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
                   --keep-dup all
 
 		sort -k 8gr,8gr {output.broadPeak} | \
-		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
 		gzip -nc > {output.broadPeak_compressed}
 
 		sort -k 14gr,14gr {output.broadPeak} | \
-		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ;i print $0}}'| \
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; print $0}}'| \
 		gzip -nc > {output.gappedPeak_compressed}
 
 
@@ -336,7 +333,6 @@ rule macs_pool_signal_tracks:
 		treat = "peaks/pooled_treat_pileup.bdg",
 		control_lambda = "peaks/pooled_control_lambda.bdg"
 	output:
-		pvalue_signal = "peaks/signals/pooled.pvalue_signal.bw",
 		fe_bdg = temp("peaks/signals/pooled_FE.bdg"),
 		fc_signal_bdg = temp("peaks/signals/pooled.fc.signal.bedgraph"),
 		fc_signal = "peaks/signals/pooled.fc_signal.bw",
@@ -352,7 +348,7 @@ rule macs_pool_signal_tracks:
 		"""
 		{config[macs2]} bdgcmp  \
                  -t {input.treat} -c {input.control_lambda} \
-                 --outdir peaks/signals -o {output.fe_bdg} -m FE
+                 --outdir peaks/signals -o {params.prefix}_FE.bdg -m FE
 
 		bedtools slop -i {output.fe_bdg} -g {config[chrom]} -b 0 |\
 		awk '{{ if($3!=-1) print $0}}' | \
@@ -363,11 +359,11 @@ rule macs_pool_signal_tracks:
 
 
 		chipReads=$(zcat {input.ip} | wc -l | awk '{{printf "%f", $1/1000000}}');
-		controlReads=$(zcat {control.ip} | wc -l | awk '{{printf "%f", $1/1000000}}');
+		controlReads=$(zcat {input.control} | wc -l | awk '{{printf "%f", $1/1000000}}');
 
-		sval=$(echo "${chipReads} ${controlReads}" | awk '$1>$2{{printf "%f",$2}} $1<=$2{{printf "%f",$1}}');
+		sval=$(echo "${{chipReads}} ${{controlReads}}" | awk '$1>$2{{printf "%f",$2}} $1<=$2{{printf "%f",$1}}');
 
-		macs2 bdgcmp -t {input.treat} -c {input.control_lambda} --outdir peaks/signals -o {output.ppois} -m ppois -S ${sval}
+		macs2 bdgcmp -t {input.treat} -c {input.control_lambda} --outdir peaks/signals -o {params.prefix}_ppois.bdg -m ppois -S ${{sval}}
 
 		slopBed -i {output.ppois} -g {config[chrom]} -b 0 | \
 		awk '{{if ($3 != -1) print $0}}' |  \
@@ -376,3 +372,4 @@ rule macs_pool_signal_tracks:
 		bedGraphToBigWig {output.pval_bdg} {config[chrom]} {output.pval}
 
 		"""
+

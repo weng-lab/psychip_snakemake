@@ -5,7 +5,6 @@ rule idr:
 		narrowPeak_psr1= "peaks_spp/psr00_{sample}/psr_{sample}.00.tagAlign.final.regionPeak.gz",
 		narrowPeak_psr2= "peaks_spp/psr01_{sample}/psr_{sample}.01.tagAlign.final.regionPeak.gz",
 	output:
-		idr= "idr/{sample}_overlapped-peaks.txt",
 		idr_raw = "idr/{sample}.IDR0.05.raw.narrowPeak.gz",
 		idr_final = "idr/{sample}.IDR0.05.final.narrowPeak.gz"
 			
@@ -17,11 +16,11 @@ rule idr:
 	log: "logs/6_overlap"
 	shell:
 		"""
-		idr --samples {input.narrowPeak_psr1} {input.narrowPeak_psr2} --peak-list {input.narrowPeak} --input-file-type narrowPeak --output-file {output.outdir} --rank signal.value --soft-idr-threshold {params.threshold} --plot --use-best-multisummit-IDR
+		idr --samples {input.narrowPeak_psr1} {input.narrowPeak_psr2} --peak-list {input.narrowPeak} --input-file-type narrowPeak --output-file idr/{params.prefix} --rank signal.value --soft-idr-threshold {params.threshold} --plot --use-best-multisummit-IDR
 
 		IDR_THRESH_TRANSFORMED=`awk -v p={params.threshold} 'BEGIN{{print -log(p)/log(10)}}'`
 		
-		awk 'BEGIN{{OFS="\t"}} $12>='"$IDR_THRESH_TRANSFORMED"' {{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10}}' {output.idr} | sort | uniq | sort -k7n,7n | gzip -nc > {output.idr_raw}
+		awk 'BEGIN{{OFS="\t"}} $12>='"$IDR_THRESH_TRANSFORMED"' {{print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10}}' idr/{params.prefix}.overlapped-peaks.txt | sort | uniq | sort -k7n,7n | gzip -nc > {output.idr_raw}
 
 		NPEAKS_IDR=`zcat {output.idr_raw} | wc -l`
 
@@ -30,3 +29,4 @@ rule idr:
 		sleep 120
 		"""
 		
+#idr= "idr/{sample}_overlapped-peaks.txt",

@@ -3,7 +3,7 @@ rule remove_aberrant_reads:
 	input: "mapped_reads/{sample}.raw.bam"
 	output: 
 		flt = temp("mapped_reads/{sample}.flt.tmp.bam"),
-	threads: 4
+	threads: 10
 	message: "Removing unmapped,mate unmapped,notprimary alignment, reads failing platform, low MAPQ reads."
 	log: "logs/1_filtering/{sample}_filter"
 	shell:
