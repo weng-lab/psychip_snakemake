@@ -564,3 +564,362 @@ rule macs_callPeaks_pool:
 
 		""")
 		
+rule macs_callPeaks_pool_psr_1:
+	input: 
+		control = "bed_files/pooled_controls.bed.gz",
+		ip = "bed_files/pooled_inputs.00.bed.gz",
+		cc_scores = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample=config["ips"])
+	output:
+		narrowPeak = "peaks/pooled.00_peaks.narrowPeak",
+		narrowPeak_compressed = "peaks/pooled.00_peaks.00.narrowPeak.gz",
+		narrowPeak_bb = "peaks/pooled.00_peaks.narrowPeak.bb",
+		pvalue_signal = "peaks/signals/pooled.00.pvalue_signal.bw",
+		fc_signal = "peaks/signals/pooled.00.fc_signal.bw",
+		broadPeak = "peaks/pooled.00_peaks.broadPeak",
+		broadPeak_compressed = "peaks/pooled.00_peaks.broadPeak.gz",
+		broadPeak_bb = "peaks/pooled.00_peaks.broadPeak.bb",
+		gappedPeak = "peaks/pooled.00_peaks.gappedPeak",
+		gappedPeak_compressed = "peaks/pooled.00_peaks.gappedPeak.gz",
+		gappedPeak_bb = "peaks/pooled.00_peaks.gappedPeak.bb"
+	threads:1
+	log: "logs/5_peakCalling"
+	message: "Calling Peaks in pooled samples using MACS2"
+	params:
+		prefix="pooled.00"
+	run:
+		import os, sys, time,subprocess
+		sum_len = 0
+		n_files = 0
+		for files in {input.cc_scores}:
+			for file in files:
+				n_files+=1
+				with open(file,'r') as f:
+					sum_len+=int(f.readlines()[0].split("\t")[2])
+		fraglen=int(sum_len/n_files)
+	
+		#Calling narrowPeaks	
+		shell("""
+		{config[macs2]} callpeak \
+                  -t {input.ip} -c {input.control}\
+                  -f BEDPE -n peaks/{params.prefix}\
+                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize {fraglen} \
+                  --keep-dup all -B --SPMR
+		""")
+		
+		# Rescale Col5 scores to range 10-1000 to conform \
+		# to narrowPeak.as format (score must be <1000)
+		new_min=10
+		new_max=1000
+		scores_col=5
+		sorted_fn = output.narrowPeak+"-sorted"
+		rescaled_fn = output.narrowPeak+"-rescaled"
+
+		shell("""
+		sort -k 5gr,5gr {output.narrowPeak}|\
+		awk 'BEGIN{{FS="\t";OFS="\t"}}{{if (NF != 0) print $0}}' > {sorted_fn}
+		max=`head -n 1 {sorted_fn} | cut -f 5`
+		min=`tail -n 1 {sorted_fn} | cut -f 5`
+		cat {sorted_fn}|\
+		awk -v min=$min -v max=$max 'BEGIN{{OFS="\t"}}{{n=$5;a=min;b=max;x=10;y=1000}}\
+		{{$5=int(((n-a)*(y-x)/(b-a))+x) ; print $0}}' > {rescaled_fn}
+		""")
+		
+		shell("""
+		sort -k 8gr,8gr {rescaled_fn} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
+               	print $0}}' | tee {output.narrowPeak} | gzip -c > {output.narrowPeak_compressed}
+		
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
+		
+		{config[macs2]} bdgcmp  \
+                 -t peaks/{params.prefix}_treat_pileup.bdg -c peaks/{params.prefix}_control_lambda.bdg \
+                 --outdir peaks/signals -o {params.prefix}_FE.bdg -m FE
+		
+		bedtools slop -i peaks/signals/{params.prefix}_FE.bdg -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.fc.signal.bedgraph
+		
+		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.fc.signal.bedgraph \
+                {config[chrom]} {output.fc_signal}
+		
+		rm -f peaks/signals/{params.prefix}.fc.signal.bedgraph peaks/signals/{params.prefix}_FE.bdg
+		
+		ipReads=`gzip -dc {input.ip} |wc -l | cut -d " " -f1`
+		controlReads=`gzip -dc {input.control} |wc -l | cut -d " " -f1`
+		
+            	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
+	
+		{config[macs2]} bdgcmp \
+                -t peaks/{params.prefix}_treat_pileup.bdg \
+                -c peaks/{params.prefix}_control_lambda.bdg \
+                --outdir peaks/signals -o {params.prefix}_ppois.bdg  \
+                -m ppois -S $sval
+
+		bedtools slop -i peaks/signals/{params.prefix}_ppois.bdg -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.pval.signal.bedgraph
+		
+		rm -rf peaks/signals/{params.prefix}_ppois.bdg
+	
+		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.pval.signal.bedgraph\
+		{config[chrom]} {output.pvalue_signal}
+		
+		rm -f peaks/signals/{params.prefix}.pval.signal.bedgraph peaks/signals/{params.prefix}_ppois.bdg
+		rm -f peaks/{params.prefix}_treat_pileup.bdg peaks/{params.prefix}_control_lambda.bdg
+
+		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
+		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_narrow_bb
+		
+		rm -f {sorted_fn} {rescaled_fn} 
+		""")
+		
+		#Calling gappedPeaks	
+		shell("""
+		{config[macs2]} callpeak \
+                  -t {input.ip} -c {input.control}\
+                  -f BEDPE -n peaks/{params.prefix}\
+                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
+                  --keep-dup all """)
+		
+		# Rescale Col5 scores to range 10-1000 to conform \
+		# to gappedPeak.as format (score must be <1000)
+		new_min=10
+		new_max=1000
+		scores_col=5
+		sorted_fn = output.broadPeak+"-sorted"
+		rescaled_fn = output.broadPeak+"-rescaled"
+
+		shell("""
+		sort -k 5gr,5gr {output.broadPeak}|\
+		awk 'BEGIN{{FS="\t";OFS="\t"}}{{if (NF != 0) print $0}}' > {sorted_fn}
+		max=`head -n 1 {sorted_fn} | cut -f 5`
+		min=`tail -n 1 {sorted_fn} | cut -f 5`
+		cat {sorted_fn}|\
+		awk -v min=$min -v max=$max 'BEGIN{{OFS="\t"}}{{n=$5;a=min;b=max;x=10;y=1000}}\
+		{{$5=int(((n-a)*(y-x)/(b-a))+x) ; print $0}}' > {rescaled_fn}
+		""")
+		
+		shell("""
+		sort -k 8gr,8gr {rescaled_fn} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
+               	print $0}}' | tee {output.broadPeak} | gzip -c > {output.broadPeak_compressed}
+		
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
+		
+		rm -f {sorted_fn} {rescaled_fn} 
+		""")
+
+		# Rescale Col5 scores to range 10-1000 to conform \
+		# to gappedPeak.as format (score must be <1000)
+		new_min=10
+		new_max=1000
+		scores_col=5
+		sorted_fn = output.gappedPeak+"-sorted"
+		rescaled_fn = output.gappedPeak+"-rescaled"
+
+		shell("""
+		sort -k 5gr,5gr {output.gappedPeak}|\
+		awk 'BEGIN{{FS="\t";OFS="\t"}}{{if (NF != 0) print $0}}' > {sorted_fn}
+		max=`head -n 1 {sorted_fn} | cut -f 5`
+		min=`tail -n 1 {sorted_fn} | cut -f 5`
+		cat {sorted_fn}|\
+		awk -v min=$min -v max=$max 'BEGIN{{OFS="\t"}}{{n=$5;a=min;b=max;x=10;y=1000}}\
+		{{$5=int(((n-a)*(y-x)/(b-a))+x) ; print $0}}' > {rescaled_fn}
+		""")
+		
+		shell("""
+		sort -k 14gr,14gr {rescaled_fn} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
+               	print $0}}' | tee {output.gappedPeak} | gzip -c > {output.gappedPeak_compressed}
+		
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
+		
+		rm -f {sorted_fn} {rescaled_fn} 
+		
+		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
+		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_broad_bb
+		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
+		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_gapped_bb
+
+		""")
+
+rule macs_callPeaks_pool_psr_2:
+	input: 
+		control = "bed_files/pooled_controls.bed.gz",
+		ip = "bed_files/pooled_inputs.01.bed.gz",
+		cc_scores = expand("xcor/{sample}.filt.nodup.sample.SE.tagAlign.cc.qc", sample=config["ips"])
+	output:
+		narrowPeak = "peaks/pooled.01_peaks.narrowPeak",
+		narrowPeak_compressed = "peaks/pooled.01_peaks.narrowPeak.gz",
+		narrowPeak_bb = "peaks/pooled.01_peaks.narrowPeak.bb",
+		pvalue_signal = "peaks/signals/pooled.01.pvalue_signal.bw",
+		fc_signal = "peaks/signals/pooled.01.fc_signal.bw",
+		broadPeak = "peaks/pooled.01_peaks.broadPeak",
+		broadPeak_compressed = "peaks/pooled.01_peaks.broadPeak.gz",
+		broadPeak_bb = "peaks/pooled.01_peaks.broadPeak.bb",
+		gappedPeak = "peaks/pooled.01_peaks.gappedPeak",
+		gappedPeak_compressed = "peaks/pooled.01_peaks.gappedPeak.gz",
+		gappedPeak_bb = "peaks/pooled.01_peaks.gappedPeak.bb"
+	threads:1
+	log: "logs/5_peakCalling"
+	message: "Calling Peaks in pooled samples using MACS2"
+	params:
+		prefix="pooled.01"
+	run:
+		import os, sys, time,subprocess
+		sum_len = 0
+		n_files = 0
+		for files in {input.cc_scores}:
+			for file in files:
+				n_files+=1
+				with open(file,'r') as f:
+					sum_len+=int(f.readlines()[0].split("\t")[2])
+		fraglen=int(sum_len/n_files)
+	
+		#Calling narrowPeaks	
+		shell("""
+		{config[macs2]} callpeak \
+                  -t {input.ip} -c {input.control}\
+                  -f BEDPE -n peaks/{params.prefix}\
+                  -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize {fraglen} \
+                  --keep-dup all -B --SPMR
+		""")
+		
+		# Rescale Col5 scores to range 10-1000 to conform \
+		# to narrowPeak.as format (score must be <1000)
+		new_min=10
+		new_max=1000
+		scores_col=5
+		sorted_fn = output.narrowPeak+"-sorted"
+		rescaled_fn = output.narrowPeak+"-rescaled"
+
+		shell("""
+		sort -k 5gr,5gr {output.narrowPeak}|\
+		awk 'BEGIN{{FS="\t";OFS="\t"}}{{if (NF != 0) print $0}}' > {sorted_fn}
+		max=`head -n 1 {sorted_fn} | cut -f 5`
+		min=`tail -n 1 {sorted_fn} | cut -f 5`
+		cat {sorted_fn}|\
+		awk -v min=$min -v max=$max 'BEGIN{{OFS="\t"}}{{n=$5;a=min;b=max;x=10;y=1000}}\
+		{{$5=int(((n-a)*(y-x)/(b-a))+x) ; print $0}}' > {rescaled_fn}
+		""")
+		
+		shell("""
+		sort -k 8gr,8gr {rescaled_fn} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
+               	print $0}}' | tee {output.narrowPeak} | gzip -c > {output.narrowPeak_compressed}
+		
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
+		
+		{config[macs2]} bdgcmp  \
+                 -t peaks/{params.prefix}_treat_pileup.bdg -c peaks/{params.prefix}_control_lambda.bdg \
+                 --outdir peaks/signals -o {params.prefix}_FE.bdg -m FE
+		
+		bedtools slop -i peaks/signals/{params.prefix}_FE.bdg -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.fc.signal.bedgraph
+		
+		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.fc.signal.bedgraph \
+                {config[chrom]} {output.fc_signal}
+		
+		rm -f peaks/signals/{params.prefix}.fc.signal.bedgraph peaks/signals/{params.prefix}_FE.bdg
+		
+		ipReads=`gzip -dc {input.ip} |wc -l | cut -d " " -f1`
+		controlReads=`gzip -dc {input.control} |wc -l | cut -d " " -f1`
+		
+            	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
+	
+		{config[macs2]} bdgcmp \
+                -t peaks/{params.prefix}_treat_pileup.bdg \
+                -c peaks/{params.prefix}_control_lambda.bdg \
+                --outdir peaks/signals -o {params.prefix}_ppois.bdg  \
+                -m ppois -S $sval
+
+		bedtools slop -i peaks/signals/{params.prefix}_ppois.bdg -g {config[chrom]} -b 0 |\
+                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.pval.signal.bedgraph
+		
+		rm -rf peaks/signals/{params.prefix}_ppois.bdg
+	
+		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.pval.signal.bedgraph\
+		{config[chrom]} {output.pvalue_signal}
+		
+		rm -f peaks/signals/{params.prefix}.pval.signal.bedgraph peaks/signals/{params.prefix}_ppois.bdg
+		rm -f peaks/{params.prefix}_treat_pileup.bdg peaks/{params.prefix}_control_lambda.bdg
+
+		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
+		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_narrow_bb
+		
+		rm -f {sorted_fn} {rescaled_fn} 
+		""")
+		
+		#Calling gappedPeaks	
+		shell("""
+		{config[macs2]} callpeak \
+                  -t {input.ip} -c {input.control}\
+                  -f BEDPE -n peaks/{params.prefix}\
+                  -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
+                  --keep-dup all """)
+		
+		# Rescale Col5 scores to range 10-1000 to conform \
+		# to gappedPeak.as format (score must be <1000)
+		new_min=10
+		new_max=1000
+		scores_col=5
+		sorted_fn = output.broadPeak+"-sorted"
+		rescaled_fn = output.broadPeak+"-rescaled"
+
+		shell("""
+		sort -k 5gr,5gr {output.broadPeak}|\
+		awk 'BEGIN{{FS="\t";OFS="\t"}}{{if (NF != 0) print $0}}' > {sorted_fn}
+		max=`head -n 1 {sorted_fn} | cut -f 5`
+		min=`tail -n 1 {sorted_fn} | cut -f 5`
+		cat {sorted_fn}|\
+		awk -v min=$min -v max=$max 'BEGIN{{OFS="\t"}}{{n=$5;a=min;b=max;x=10;y=1000}}\
+		{{$5=int(((n-a)*(y-x)/(b-a))+x) ; print $0}}' > {rescaled_fn}
+		""")
+		
+		shell("""
+		sort -k 8gr,8gr {rescaled_fn} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
+               	print $0}}' | tee {output.broadPeak} | gzip -c > {output.broadPeak_compressed}
+		
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
+		
+		rm -f {sorted_fn} {rescaled_fn} 
+		""")
+
+		# Rescale Col5 scores to range 10-1000 to conform \
+		# to gappedPeak.as format (score must be <1000)
+		new_min=10
+		new_max=1000
+		scores_col=5
+		sorted_fn = output.gappedPeak+"-sorted"
+		rescaled_fn = output.gappedPeak+"-rescaled"
+
+		shell("""
+		sort -k 5gr,5gr {output.gappedPeak}|\
+		awk 'BEGIN{{FS="\t";OFS="\t"}}{{if (NF != 0) print $0}}' > {sorted_fn}
+		max=`head -n 1 {sorted_fn} | cut -f 5`
+		min=`tail -n 1 {sorted_fn} | cut -f 5`
+		cat {sorted_fn}|\
+		awk -v min=$min -v max=$max 'BEGIN{{OFS="\t"}}{{n=$5;a=min;b=max;x=10;y=1000}}\
+		{{$5=int(((n-a)*(y-x)/(b-a))+x) ; print $0}}' > {rescaled_fn}
+		""")
+		
+		shell("""
+		sort -k 14gr,14gr {rescaled_fn} |\
+		awk 'BEGIN{{OFS="\t"}}{{$4="Peak_"NR ; \
+               	print $0}}' | tee {output.gappedPeak} | gzip -c > {output.gappedPeak_compressed}
+		
+		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
+		
+		rm -f {sorted_fn} {rescaled_fn} 
+		
+		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
+		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_broad_bb
+		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
+		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
+		rm -f peaks/tmp_{params.prefix}_gapped_bb
+
+		""")

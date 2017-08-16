@@ -34,6 +34,22 @@ rule pooling_input:
 		zcat {input} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
 		"""
 
+rule pseudorepping_pooled:
+	input: 
+		input1 = expand("bed_files/psr_{sample}.00.bed.gz",sample = config["ips"]),
+		input2 = expand("bed_files/psr_{sample}.01.bed.gz",sample = config["ips"])
+	output: 
+		rep1 = "bed_files/pooled_inputs.00.bed.gz",
+		rep2 = "bed_files/pooled_inputs.01.bed.gz"
+	message: "Pseudorepping pooled inputs together"
+	log: "logs/4_pseudoreps"
+	threads:4
+	shell:
+		"""
+		zcat {input.input1} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output.rep1}
+		zcat {input.input2} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output.rep2}
+		"""
+
 rule pooling_control:
 	input: expand("bed_files/{sample}.bed.gz",sample = config["controls"])
 	output: "bed_files/pooled_controls.bed.gz"
