@@ -33,10 +33,10 @@ if not config["tf"]:
 	else:
 		PEAKS = expand("peaks/{sample}_peaks.narrowPeak", sample = config["ips"])
 		FINAL = expand("finalPeaks/{sample}_final.narrowPeak", sample = config["ips"])
-		P_FINAL = ["peaks/pooled_final.narrowPeak"]
+#		P_FINAL = ["peaks/pooled_final.narrowPeak"]
 	
 	rule all:
-		input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + PEAKS + XCOR + POOLED + FINAL + P_FINAL
+		input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + PEAKS + XCOR + POOLED + FINAL
 		#input: FINAL + P_FINAL
 
 	if config["matching"]:

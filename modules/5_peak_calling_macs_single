@@ -254,10 +254,12 @@ rule macs_callPeaks_inputs:
 
 		bedtools slop -i peaks/tmp_{params.prefix}_broad_bb -g {config[chrom]} -b 0 |\
                 {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_broad_bb_clipped
-
-		awk 'BEGIN{{OFS="\t"}}{{if($8!=$3) {{$8=$3;diff=$3-$2-1;split($12,a,",");a[length(a)]=diff;new="";for(i=1;i<=length(a);i++){{new=new a[i] ",";}} $12=gensub(",$","","g",new);print $0 }}else print}}' peaks/tmp_{params.prefix}_broad_bb_clipped > 000_{params.prefix}
 		
-		mv 000_{params.prefix} peaks/tmp_{params.prefix}_broad_bb_clipped
+
+		#awk 'BEGIN{{OFS="\t"}}{{if($8!=$3) {{$8=$3;diff=$3-$2-1;split($12,a,",");a[length(a)]=diff;new="";for(i=1;i<=length(a);i++){{new=new a[i] ",";}} $12=gensub(",$","","g",new);print $0;delete new;delete a}}else print}}' peaks/tmp_{params.prefix}_broad_bb_clipped > 000_{params.prefix}
+		
+		#python {config[path]}/correct_peaks_out_of_bound.py peaks/tmp_{params.prefix}_broad_bb_clipped {params.prefix}
+		#mv 000_{params.prefix} peaks/tmp_{params.prefix}_broad_bb_clipped
 
 		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb_clipped {config[chrom]} {output.broadPeak_bb}
 
@@ -268,8 +270,9 @@ rule macs_callPeaks_inputs:
 		bedtools slop -i peaks/tmp_{params.prefix}_gapped_bb -g {config[chrom]} -b 0 |\
                 {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_gapped_bb_clipped
 		
-		awk 'BEGIN{{OFS="\t"}}{{if($8!=$3) {{$8=$3;diff=$3-$2-1;split($12,a,",");a[length(a)]=diff;new="";for(i=1;i<=length(a);i++){{new=new a[i] ",";}} $12=gensub(",$","","g",new);print $0 }}else print}}' peaks/tmp_{params.prefix}_gapped_bb_clipped > 000_{params.prefix}
+		#awk 'BEGIN{{OFS="\t"}}{{if($8!=$3) {{$8=$3;diff=$3-$2-1;split($12,a,",");a[length(a)]=diff;new="";for(i=1;i<=length(a);i++){{new=new a[i] ",";}} $12=gensub(",$","","g",new);print $0;delete new;delete a }}else print}}' peaks/tmp_{params.prefix}_gapped_bb_clipped > 000_{params.prefix}
 		
+		python {config[path]}/correct_peaks_out_of_bound.py peaks/tmp_{params.prefix}_gapped_bb_clipped {params.prefix}
 		mv 000_{params.prefix} peaks/tmp_{params.prefix}_gapped_bb_clipped
 
 		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb_clipped {config[chrom]} {output.gappedPeak_bb}
@@ -596,8 +599,9 @@ rule macs_callPeaks_pool:
 		bedtools slop -i peaks/tmp_{params.prefix}_gapped_bb -g {config[chrom]} -b 0 |\
                 {config[path]}/bedClip stdin {config[chrom]} peaks/tmp_{params.prefix}_gapped_bb_clipped
 		
-		awk 'BEGIN{{OFS="\t"}}{{if($8!=$3) {{$8=$3;diff=$3-$2-1;split($12,a,",");a[length(a)]=diff;new="";for(i=1;i<=length(a);i++){{new=new a[i] ",";}} $12=gensub(",$","","g",new);print $0 }}else print}}' peaks/tmp_{params.prefix}_gapped_bb_clipped > 000_{params.prefix}
+		#awk 'BEGIN{{OFS="\t"}}{{if($8!=$3) {{$8=$3;diff=$3-$2-1;split($12,a,",");a[length(a)]=diff;new="";for(i=1;i<=length(a);i++){{new=new a[i] ",";}} $12=gensub(",$","","g",new);print $0;delete a;delete new }}else print}}' peaks/tmp_{params.prefix}_gapped_bb_clipped > 000_{params.prefix}
 		
+		python {config[path]}/correct_peaks_out_of_bound.py peaks/tmp_{params.prefix}_gapped_bb_clipped {params.prefix}
 		mv 000_{params.prefix} peaks/tmp_{params.prefix}_gapped_bb_clipped
 
 		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb_clipped {config[chrom]} {output.gappedPeak_bb}
