@@ -5,19 +5,19 @@ ALL_SAMPLES = ["HBCC_ACC_340_A"]
 ALL_SAM = expand("mapped_reads/{sample}.raw.sam.gz", sample = ALL_SAMPLES)
 
 rule all:
-	inputs: ALL_SAMPLES
+	inputs: ALL_SAM
 
 rule bwa:
 	input: 
 		input1 = "samples/{sample}.R1.fastq.gz",
 		input2 = "samples/{sample}.R2.fastq.gz",
-		genome = "../shared/hg19_with_sponges.fa"
+		genome = "shared/hg19_with_sponges.fa"
 	output:
 		"mapped_reads/{sample}.raw.sam.gz"
 	threads: 10
 	message: "Map to the genome"
-	singularity:
-		"docker://polumechanos/psychencode"
+#	singularity:
+#		"docker://polumechanos/psychencode"
 	shell:
 		"bwa mem -M -t {threads} {input.genome} {input.input1} {input.input2} | gzip -c > {output}"
 		
