@@ -1,7 +1,13 @@
 
 shell.prefix("set -eo pipefail; ")
 
-ALL_SAMPLES = ["HBCC_ACC_340_A"] 
+configfile: "config_ACC_NeuN+_H3K4me3.yaml"
+localrules: all
+
+ALL_SAMPLES = config["ips"] + config["controls"]
+
+
+#ALL_SAMPLES = ["HBCC_ACC_340_A"] 
 ALL_SAM = expand("mapped_reads/{sample}.raw.sam.gz", sample = ALL_SAMPLES)
 
 rule all:
