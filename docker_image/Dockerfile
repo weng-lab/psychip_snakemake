@@ -1,0 +1,146 @@
+############################################################
+# Dockerfile for psychENCODE ChIPseq pipeline
+# Modified from dockerfile for ENCODE DCC atac-seq-pipeline
+# Based on Ubuntu 16.04
+############################################################
+
+# IMPORTANT!
+# If you install python2/3 packages using pip/pip3
+#  and not sure about math library dependencies like BLAS and numpy,
+#  then install with --no-dependencies
+
+# Set the base image to Ubuntu 16.04
+FROM ubuntu:16.04
+
+# File Author / Maintainer
+MAINTAINER Eugenio Mattei
+
+# Update the repository sources list
+# Install base packages: git, python2/3, java, R
+RUN apt-get update && apt-get install -y \
+    libncurses5-dev \
+    libncursesw5-dev \
+    libcurl4-openssl-dev \
+    libfreetype6-dev \
+    zlib1g-dev \
+    python \
+    python-setuptools \
+    python-pip \
+    python3 \
+    python3-setuptools \
+    python3-pip \
+    git \
+    wget \
+    unzip \
+    ghostscript \
+    pkg-config \
+    libboost-dev \
+    r-base-core \
+    default-jre \
+&& rm -rf /var/lib/apt/lists/*
+
+# Make directory for all softwares
+RUN mkdir /software
+WORKDIR /software
+ENV PATH="/software:${PATH}"
+
+# Install OpenBLAS 0.2.19 (NEHALEM architecture, single-threaded)
+# to have the same result as of Conda's non-MKL openblas 0.2.19
+# setting TARGET=HASWELL will give you different result.
+# so let's stick to TARGET=NEHALEM
+RUN git clone --branch v0.2.19 --single-branch https://github.com/xianyi/OpenBLAS && \
+    cd OpenBLAS && make FC=gfortran TARGET=NEHALEM USE_THREAD=0 && make PREFIX=/opt/openblas install && \
+    cd ../ && rm -rf OpenBLAS*
+ENV LD_LIBRARY_PATH="/opt/openblas/lib:${LD_LIBRARY_PATH}"
+
+# Install basic python2/3 packages
+RUN pip install --no-cache-dir common python-dateutil cython==0.27.3 && \
+    pip3 install --no-cache-dir common python-dateutil cython==0.27.3
+
+# Install numpy 1.11.3 (python2/3)
+RUN wget https://github.com/ottojolanki/numpy/archive/numpy_1.11.3_release.zip && unzip numpy_1.11.3_release.zip && \
+    cd numpy-numpy_1.11.3_release && python setup.py install && python3 setup.py install && cd ../ && rm -rf numpy*
+
+# Install scipy 1.0.0 (python2/3)
+RUN git clone --branch v1.0.0 --single-branch https://github.com/scipy/scipy && \
+    cd scipy && python setup.py install && python3 setup.py install && cd ../ && rm -rf scipy*
+
+# Install matplotlib 1.5.1 (python2/3)
+RUN git clone --branch v1.5.1 --single-branch https://github.com/matplotlib/matplotlib && \
+    cd matplotlib && python setup.py install && python3 setup.py install && cd ../ && rm -rf matplotlib*
+
+# Install MACS2 2.1.1.20160309 (python2)
+RUN pip install --no-cache-dir --no-dependencies macs2==2.1.1.20160309
+
+# Install IDR 2.0.4.2 (python3)
+RUN git clone --branch 2.0.4.2 --single-branch https://github.com/kundajelab/idr && \
+    cd idr && python3 setup.py install && cd ../ && rm -rf idr*
+
+# Install UCSC tools (Kent utils) latest
+RUN wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedClip && chmod +x bedClip
+RUN wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedGraphToBigWig && chmod +x bedGraphToBigWig
+RUN wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedToBigBed && chmod +x bedToBigBed
+
+# Install samtools 1.3
+RUN git clone --branch 1.3 --single-branch https://github.com/samtools/samtools.git && \
+    git clone --branch 1.3 --single-branch https://github.com/samtools/htslib.git && \
+    cd samtools && make && make install && cd ../ && rm -rf samtools* htslib*
+
+# Install bedtools 2.27.1
+RUN git clone --branch v2.27.1 --single-branch https://github.com/arq5x/bedtools2.git && \
+    cd bedtools2 && make && make install && cd ../ && rm -rf bedtools2*
+
+# Install Picard 2.10.6
+RUN wget https://github.com/broadinstitute/picard/releases/download/2.10.6/picard.jar && chmod +x picard.jar
+
+# Install bwa 0.7.13
+RUN git clone --branch v0.7.13 --single-branch https://github.com/lh3/bwa.git && \
+    cd bwa && make && cd ../
+ENV PATH="/software/bwa:${PATH}"
+
+# Install snakemake fix-kubernetes-workdir
+RUN pip3 install pyyaml kubernetes python-kubernetes && git clone --branch fix-kubernetes-workdir --single-branch https://bitbucket.org/WUGTAC/snakemake.git && \
+    cd snakemake && python3 setup.py install
+
+# Install R packages
+#RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile && \
+#    Rscript -e "install.packages('snow')" && \
+#    Rscript -e "install.packages('snowfall')" && \
+#    Rscript -e "install.packages('bitops')" && \
+#    Rscript -e "install.packages('caTools')" && \
+#    Rscript -e "source('http://bioconductor.org/biocLite.R'); biocLite('Rsamtools')"
+
+# Install R package spp 1.13 (required for phantompeakqualtools)
+#RUN wget https://github.com/hms-dbmi/spp/archive/1.13.tar.gz && Rscript -e "install.packages('./1.13.tar.gz')" && rm -f 1.13.tar.gz
+
+# Install phantompeakqualtools 1.2
+#RUN wget https://github.com/kundajelab/phantompeakqualtools/archive/1.2.tar.gz && tar -xvf 1.2.tar.gz && rm -f 1.2.tar.gz
+#ENV PATH="/software/phantompeakqualtools-1.2:${PATH}"
+
+# Install cutadapt 1.9.1
+#RUN pip install --no-cache-dir --no-dependencies cutadapt==1.9.1 
+
+
+## Install Bowtie2 2.2.6
+#RUN wget https://github.com/BenLangmead/bowtie2/releases/download/v2.2.6/bowtie2-2.2.6-linux-x86_64.zip && \
+#    unzip bowtie2-2.2.6-linux-x86_64.zip && mv bowtie2*/bowtie2* . && rm -rf bowtie2-2.2.6*
+
+
+# Install python packages for ATAQC (pysam, pybedtools, metaseq, pandas, jinja2)
+#RUN pip install --no-cache-dir pysam==0.8.2.1 pybedtools==0.6.9 pandas==0.21.1 metaseq==0.5.6 jinja2==2.10
+
+# Install gsl 1.16
+#RUN wget http://gnu.mirror.vexxhost.com/gsl/gsl-1.16.tar.gz && tar -zxvf gsl-1.16.tar.gz && cd gsl-1.16 && ./configure && make && make install && cd .. && rm -rf gsl-1.16 gsl-1.16.tar.gz
+#ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib
+
+# Get ENCODE atac-seq-pipeline container repository
+# This COPY assumes the build context is the root of the atac-seq-pipeline repo
+# and it gets whatever is checked out plus local modifications
+# so the buildling command should:
+# cd [GIT_REPO_DIR] && docker build -f docker_images/pipeline/Dockerfile .
+#RUN mkdir -p atac-seq-pipeline/src
+#COPY src atac-seq-pipeline/src/
+#COPY atac.wdl atac-seq-pipeline/
+#ENV PATH="/software/atac-seq-pipeline:/software/atac-seq-pipeline/src:${PATH}"
+
+ENTRYPOINT ["/bin/bash","-c"]
