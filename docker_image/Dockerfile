@@ -54,8 +54,8 @@ RUN git clone --branch v0.2.19 --single-branch https://github.com/xianyi/OpenBLA
 ENV LD_LIBRARY_PATH="/opt/openblas/lib:${LD_LIBRARY_PATH}"
 
 # Install basic python2/3 packages
-RUN pip install --no-cache-dir common python-dateutil cython==0.27.3 && \
-    pip3 install --no-cache-dir common python-dateutil cython==0.27.3
+RUN pip install --no-cache-dir common python-dateutil cython==0.27.3
+RUN pip3 install --no-cache-dir common python-dateutil cython==0.27.3
 
 # Install numpy 1.11.3 (python2/3)
 RUN wget https://github.com/ottojolanki/numpy/archive/numpy_1.11.3_release.zip && unzip numpy_1.11.3_release.zip && \
@@ -99,7 +99,7 @@ RUN git clone --branch v0.7.13 --single-branch https://github.com/lh3/bwa.git &&
 ENV PATH="/software/bwa:${PATH}"
 
 # Install snakemake fix-kubernetes-workdir
-RUN pip3 install pyyaml kubernetes python-kubernetes && git clone --branch fix-kubernetes-workdir --single-branch https://bitbucket.org/WUGTAC/snakemake.git && \
+RUN pip3 install --no-cache-dir pyyaml kubernetes python-kubernetes google-cloud-storage && git clone --branch fix-kubernetes-workdir --single-branch https://bitbucket.org/WUGTAC/snakemake.git && \
     cd snakemake && python3 setup.py install
 
 # Install R packages

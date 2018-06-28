@@ -1,4 +1,5 @@
 gcloud container clusters get-credentials t0 --zone us-east1-b --project psychencode
 gcloud container clusters create t0 --enable-autoscaling --min-nodes=1 --max-nodes=16 --num-nodes=1 --zone us-east1-b --project psychencode --scopes=storage-rw,compute-rw,service-control,logging-write,monitoring-write --machine-type="n1-highmem-32"
+export GOOGLE_APPLICATION_CREDENTIALS=""
 snakemake -j 320 --use-singularity -s Snakefile-kubernetes --kubernetes --default-remote-provider GS --default-remote-prefix psychencode-data/ACC_NeuN+_H3K4me3 --container-image polumechanos/psychencode:bwa --rerun-incomplete
 gcloud container clusters delete t0
