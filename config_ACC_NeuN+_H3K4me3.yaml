@@ -19,15 +19,15 @@ controls:
  - HBCC_ACC_370_Pos_IN
  - HBCC_ACC_342_Pos_IN
 
-genome: /project/umw_zhiping_weng/mattei/shared/annotations/hg19/hg19_with_sponges.fa
-chrom: /project/umw_zhiping_weng/mattei/shared/annotations/hg19/hg19.chrom.sizes
+genome: hg19/hg19_with_sponges.fa
+chrom: shared/hg19.chrom.sizes
 sponge_flag: true
-sponges: /project/umw_zhiping_weng/mattei/shared/annotations/GRCh37_sponge.names
-path: /project/umw_zhiping_weng/mattei/git/psychip_snakemake/common
+sponges: shared/GRCh37_sponge.names
+path: psychip_snakemake/common
 macs2: /home/mp63w/bin/MACS_weng/bin/macs2
 macs_g: hs
 paired: true
 matching: false
-sort: /home/em79w/Programs/bin/sort
-split: /home/em79w/Programs/bin/split
+sort: Programs/bin/sort
+split: Programs/bin/split
 tf: false
