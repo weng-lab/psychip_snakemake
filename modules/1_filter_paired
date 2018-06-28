@@ -25,7 +25,7 @@ rule remove_badcigar_step2:
 	params:
 		prefix="{sample}"
 	run:
-		with open("mapped_reads/" + wildcards.sample + ".badcigar") as fp:
+		with open(output.cigar) as fp:
 			peek = [x for i,x in enumerate(fp) if i<10 and x.rstrip()]
 		cigar_len=len(peek)
 		shell("""if [ {cigar_len} -gt 0 ]
