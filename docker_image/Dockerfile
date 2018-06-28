@@ -103,19 +103,19 @@ RUN pip3 install --no-cache-dir pyyaml kubernetes python-kubernetes google-cloud
     cd snakemake && python3 setup.py install
 
 # Install R packages
-#RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile && \
-#    Rscript -e "install.packages('snow')" && \
-#    Rscript -e "install.packages('snowfall')" && \
-#    Rscript -e "install.packages('bitops')" && \
-#    Rscript -e "install.packages('caTools')" && \
-#    Rscript -e "source('http://bioconductor.org/biocLite.R'); biocLite('Rsamtools')"
+RUN echo "r <- getOption('repos'); r['CRAN'] <- 'http://cran.us.r-project.org'; options(repos = r);" > ~/.Rprofile && \
+    Rscript -e "install.packages('snow')" && \
+    Rscript -e "install.packages('snowfall')" && \
+    Rscript -e "install.packages('bitops')" && \
+    Rscript -e "install.packages('caTools')" && \
+    Rscript -e "source('http://bioconductor.org/biocLite.R'); biocLite('Rsamtools')"
 
 # Install R package spp 1.13 (required for phantompeakqualtools)
-#RUN wget https://github.com/hms-dbmi/spp/archive/1.13.tar.gz && Rscript -e "install.packages('./1.13.tar.gz')" && rm -f 1.13.tar.gz
+RUN wget https://github.com/hms-dbmi/spp/archive/1.13.tar.gz && Rscript -e "install.packages('./1.13.tar.gz')" && rm -f 1.13.tar.gz
 
 # Install phantompeakqualtools 1.2
-#RUN wget https://github.com/kundajelab/phantompeakqualtools/archive/1.2.tar.gz && tar -xvf 1.2.tar.gz && rm -f 1.2.tar.gz
-#ENV PATH="/software/phantompeakqualtools-1.2:${PATH}"
+RUN wget https://github.com/kundajelab/phantompeakqualtools/archive/1.2.tar.gz && tar -xvf 1.2.tar.gz && rm -f 1.2.tar.gz
+ENV PATH="/software/phantompeakqualtools-1.2:${PATH}"
 
 # Install cutadapt 1.9.1
 #RUN pip install --no-cache-dir --no-dependencies cutadapt==1.9.1 
