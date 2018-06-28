@@ -22,7 +22,7 @@ rule bwa:
 		"mapped_reads/{sample}.raw.sam.gz"
 	threads: 32
 	singularity:
-		"docker://polumechanos/psychencode:bwa"
+		"docker://polumechanos/psychencode:complete"
 	message: "Map to the genome"
 	shell:
 		"tar xvzf {input.index};"

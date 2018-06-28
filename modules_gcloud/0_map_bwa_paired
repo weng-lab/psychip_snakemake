@@ -1,0 +1,16 @@
+
+rule map_bwa_paired:
+	input:
+		input1 = "samples/{sample}.R1.fastq.gz",
+		input2 = "samples/{sample}.R2.fastq.gz",
+		index = "shared/hg19_with_sponges.tar.gz"
+	output:
+		temp("mapped_reads/{sample}.raw.sam.gz")
+	threads:10
+	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
+	log: "logs/0_mapping/{sample}_map_paired"
+	params:
+		index_name = "./hg19_with_sponges.fa"
+	shell:
+		"tar xvzf {input.index};"
+		"bwa mem -M -t {threads} {params.index_name} {input.input1} {input.input2} | gzip -c > {output}"

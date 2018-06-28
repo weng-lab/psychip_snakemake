@@ -1,0 +1,196 @@
+rule remove_badcigar_step1:
+	input: "mapped_reads/{sample}.raw.sam.gz"
+	output: temp("mapped_reads/{sample}.badcigar")
+	threads:1
+	message: "Removing reads with bad CIGAR"
+	log: "logs/1_filtering/{sample}_filter"
+	shell:
+		"""
+		zcat {input} | \
+                awk 'BEGIN{{FS="\t"; OFS="\t"}}
+                !/^@/ && $6!="*" {{
+                cigar=$6; gsub("[0-9]+D","",cigar);
+                n=split(cigar, vals, "[A-Z]");
+                s=0; for(i=1;i<=n;i++) s=s+vals[i];
+		seqlen=length($10);
+		if(s!=seqlen) print $1"\t";}}' | sort | uniq > {output}
+		"""
+
+rule remove_badcigar_step2:
+	input:
+		sam = "mapped_reads/{sample}.raw.sam.gz",
+		cigar = "mapped_reads/{sample}.badcigar"
+	output: "mapped_reads/{sample}.raw.bam"
+	threads: 4
+	params:
+		prefix="{sample}"
+	run:
+		with open("mapped_reads/" + wildcards.sample + ".badcigar") as fp:
+			peek = [x for i,x in enumerate(fp) if i<10 and x.rstrip()]
+		cigar_len=len(peek)
+		shell("""if [ {cigar_len} -gt 0 ]
+		then
+			zcat {input.sam} | grep -vF -f {input.cigar} | \
+			samtools view -@ {threads} -Su - | \
+			samtools sort -@ {threads} -T {params.prefix} -o {output} -
+	        else
+            		samtools view -@ {threads} -Su {input.sam} |\
+                        samtools sort -@ {threads} -T {params.prefix} -o {output} -
+		fi""")
+
+rule remove_aberrant_reads:
+	input: "mapped_reads/{sample}.raw.bam"
+	output: 
+		tmp = temp("mapped_reads/{sample}.tmp.bam"),
+		flt = temp("mapped_reads/{sample}.flt.tmp.bam"),
+		clean = temp("mapped_reads/{sample}.tmp.clean.bam")
+	threads: 4
+	params:
+		mem = "2G",
+		prefix="{sample}"
+	message: "Removing aberrant reads : samtools view -@ {threads} -F1804 -f2 -q 20 -h -u {input} | samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -n -o {output.tmp} - \n samtools fixmate -r {output.tmp} {output.clean} \n samtools view -@ {threads} -F1804 -f2 -u {output.clean} | samtools sort -@{threads} -m {params.mem} -T {params.prefix} -o {output.flt} -"
+	log: "logs/1_filtering/{sample}_filter"
+	shell:
+		"""
+			samtools view -@ {threads} -F1804 -f2 -q 20 -h \
+                        -u {input} | \
+                        samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -n -o {output.tmp} -
+
+			samtools fixmate -r {output.tmp} {output.clean}
+			
+			samtools view -@ {threads} -F1804 -f2 -u {output.clean} |\
+                        samtools sort -@ {threads} -m {params.mem} -T {params.prefix}_2 -o {output.flt} -
+		"""
+
+if(config["sponge_flag"]):
+	rule remove_artifacts:
+		input: "mapped_reads/{sample}.flt.tmp.bam"
+		output: 
+			temp = temp("mapped_reads/{sample}.temp"),
+			qc = "qc/{sample}.pcrDups.QC.txt"
+		threads: 4
+		message: "Removing aberrant reads and marking PCR duplicates"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+			"""
+			java -Xmx4G -jar ./picard.jar MarkDuplicates\
+			INPUT={input} OUTPUT={output.temp} \
+			METRICS_FILE={output.qc} ASSUME_SORTED=true \
+			VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=false
+			 
+			"""
+	rule sponge_removal:
+		input: "mapped_reads/{sample}.temp"
+		output:	
+			flt = temp("mapped_reads/{sample}.flt.bam"),
+			sponge_temp=temp("mapped_reads/sponges_removal_{sample}")
+		threads:4
+		params:
+			prefix="temp_sponges_{sample}",
+			mem="2G"
+			sponge_names="shared/GRCh37_sponge.names"
+		message: "Removing sponges"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+			"""
+			samtools view -@ {threads} -h {input} |\
+                        grep -vF -f {params.sponge_names} - |\
+                        samtools view -@ {threads} -b -o {output.flt} -
+			
+			samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -n -o {output.sponge_temp} {output.flt}
+			samtools fixmate -r {output.sponge_temp} {output.flt}
+
+			"""
+
+	rule samtools_flag_filtering:
+		input: "mapped_reads/{sample}.flt.bam"
+		output:
+			tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
+			final_bam = "mapped_reads/{sample}.final.bam",
+			final_bai = "mapped_reads/{sample}.final.bai"
+		threads: 10
+		params:
+			mem = "2G",
+			prefix="{sample}_finaltmp"
+		message: "Filtering out bad samtools flags:\nsamtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}\nsamtools index {output.final_bam} {output.final_bai}\nsamtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input} "
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+                        """
+			samtools view -@ {threads} -F1804 -f2 -b -u {input} |\
+                        samtools sort -@ {threads} -m {params.mem} -T {params.prefix}_2 -o {output.final_bam} -
+
+                        #samtools view -@ {threads} -F1804 -f2 -b -o {output.final_bam} {input}
+                        samtools index {output.final_bam} {output.final_bai}
+
+			samtools sort -@ {threads} -m {params.mem} -T {params.prefix} -o {output.tmp_sort} -n {input}
+                        """	
+			
+else:
+	rule remove_artifacts:
+		input: "mapped_reads/{sample}.flt.tmp.bam"
+		output: 
+			flt = temp("mapped_reads/{sample}.flt.bam"),
+			qc = "qc/{sample}.pcrDups.QC.txt"
+		threads: 4
+		message: "Removing aberrant reads and marking PCR duplicates"
+		log: "logs/1_filtering/{sample}_filter"
+		shell:
+			"""
+			java -Xmx4G -jar ./picard.jar MarkDuplicates\
+			INPUT={input} OUTPUT={output.flt} \
+			METRICS_FILE={output.qc} ASSUME_SORTED=true \
+			VALIDATION_STRINGENCY=LENIENT REMOVE_DUPLICATES=false
+			 
+			"""
+	
+	rule samtools_flag_filtering:
+		input: "mapped_reads/{sample}.flt.bam"
+		output:
+			final_bam = "mapped_reads/{sample}.final.bam",
+			final_bai = "mapped_reads/{sample}.final.bai"
+		threads: 10
+		message: "Filtering out bad samtools flags:\nsamtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}\nsamtools index {output.final_bam} {output.final_bai}\nsamtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input} "
+		log: "logs/1_filtering/{sample}_filter"
+		params:
+			prefix="{sample}_finaltmp"
+		shell:
+                        """
+                        samtools view -@ {threads} -F1804 -f2 -b -T {params.prefix} -o {output.final_bam} {input}
+                        samtools index {output.final_bam} {output.final_bai}
+
+                        """	
+
+rule generate_bedpe:
+	input: 
+		final_bam = "mapped_reads/{sample}.final.bam",
+	output: 
+		tmp_sort = temp("mapped_reads/{sample}.sort_name.bam"),
+		bedpe = "bed_files/{sample}.bedpe.gz"
+	threads: 10
+	params:
+		prefix="{sample}_bedpe"
+	message: "Creating bedpe"
+	log: "logs/1_filtering/{sample}_filter"
+	shell:
+		"""
+		samtools sort -@ {threads} -T {params.prefix} -o {output.tmp_sort} -n {input.final_bam}
+		bedtools bamtobed -bedpe -mate1 -i {output.tmp_sort} |\
+                gzip -c > {output.bedpe} 
+		"""
+
+rule generate_bed:
+	input: "bed_files/{sample}.bedpe.gz",
+	output: 
+		bed = "bed_files/{sample}.bed.gz"
+	threads: 4
+	message: "Create bed"
+	log: "logs/1_filtering/{sample}_filter"
+	shell:
+		"""zcat {input} | \
+                awk 'BEGIN{{OFS="\t"; FS="\t"}}
+                {{ chrom=$1; beg=$2; end=$6;
+                if($2>$5){{beg=$5}} if($3>$6){{end=$3}}
+                print chrom,beg,end
+                }}' - | sort --parallel={threads} -S 2G -k1,1 -k2,2n | \
+                gzip -c > {output.bed}"""
+
