@@ -35,7 +35,7 @@ rule macs_callPeaks_inputs:
 		shell("""
 		fraglen=`cat {input.cc_scores}| cut -f3`
 			
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{wildcards.sample}\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
@@ -67,14 +67,14 @@ rule macs_callPeaks_inputs:
 		
 		rm -f peaks/{wildcards.sample}_peaks.xls peaks/{wildcards.sample}_peaks.bed peaks/{wildcards.sample}_summits.bed
 		
-		{config[macs2]} bdgcmp  \
+		macs2 bdgcmp  \
                  -t peaks/{wildcards.sample}_treat_pileup.bdg -c peaks/{wildcards.sample}_control_lambda.bdg \
                  --outdir peaks/signals -o {wildcards.sample}_FE.bdg -m FE
 		
 		bedtools slop -i peaks/signals/{wildcards.sample}_FE.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{wildcards.sample}.fc.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/{wildcards.sample}.fc.signal.bedgraph
 		
-		{config[path]}/bedGraphToBigWig peaks/signals/{wildcards.sample}.fc.signal.bedgraph \
+		./bedGraphToBigWig peaks/signals/{wildcards.sample}.fc.signal.bedgraph \
                 {config[chrom]} {output.fc_signal}
 		
 		rm -f peaks/signals/{wildcards.sample}.fc.signal.bedgraph peaks/signals/{wildcards.sample}_FE.bdg
@@ -84,16 +84,16 @@ rule macs_callPeaks_inputs:
 		
             	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
 	
-		{config[macs2]} bdgcmp \
+		macs2 bdgcmp \
                 -t peaks/{wildcards.sample}_treat_pileup.bdg \
                 -c peaks/{wildcards.sample}_control_lambda.bdg \
                 --outdir peaks/signals -o {wildcards.sample}_ppois.bdg  \
                 -m ppois -S $sval
 
 		bedtools slop -i peaks/signals/{wildcards.sample}_ppois.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{wildcards.sample}.pval.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/{wildcards.sample}.pval.signal.bedgraph
 	
-		{config[path]}/bedGraphToBigWig peaks/signals/{wildcards.sample}.pval.signal.bedgraph \
+		./bedGraphToBigWig peaks/signals/{wildcards.sample}.pval.signal.bedgraph \
 		{config[chrom]} {output.pvalue_signal}
 		
 		rm -f ./peaks/signals/{wildcards.sample}_ppois.bdg 
@@ -101,7 +101,7 @@ rule macs_callPeaks_inputs:
 		rm -f ./peaks/{wildcards.sample}_treat_pileup.bdg ./peaks/{wildcards.sample}_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
-		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
+		./bedToBigBed -type='bed6+4' -as=shared/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_narrow_bb
 		
 		rm -f {sorted_fn} {rescaled_fn} 
@@ -110,7 +110,7 @@ rule macs_callPeaks_inputs:
 		###Qui cominciano le pseudorep
 		shell("""
 		fraglen=`cat {input.cc_scores}| cut -f3`
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip_psr1} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.00\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
@@ -144,7 +144,7 @@ rule macs_callPeaks_inputs:
 		rm -f {sorted_fn} {rescaled_fn} 
 
 		fraglen=`cat {input.cc_scores}| cut -f3`
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip_psr2} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.01\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize $fraglen \
@@ -185,7 +185,7 @@ rule macs_callPeaks_inputs:
 		#Calling gappedPeaks	
 		shell("""
 		fraglen=`cat {input.cc_scores}| cut -f3`
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{wildcards.sample}\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
@@ -246,10 +246,10 @@ rule macs_callPeaks_inputs:
 		
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
-		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
+		./bedToBigBed -type='bed6+3' -as=shared/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_broad_bb
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
-		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
+		./bedToBigBed -type='bed12+3' -as=shared/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_gapped_bb
 
 		rm -f {sorted_fn} {rescaled_fn} 
@@ -258,7 +258,7 @@ rule macs_callPeaks_inputs:
 		#Calling gappedPeaks psr1
 		shell("""
 		fraglen=`cat {input.cc_scores}| cut -f3`
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip_psr1} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.00\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
@@ -322,7 +322,7 @@ rule macs_callPeaks_inputs:
 		#Calling gappedPeaks psr2
 		shell("""
 		fraglen=`cat {input.cc_scores}| cut -f3`
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip_psr2} -c {input.control}\
                   -f BEDPE -n peaks/psr_{wildcards.sample}.01\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize $fraglen \
@@ -419,7 +419,7 @@ rule macs_callPeaks_pool:
 	
 		#Calling narrowPeaks	
 		shell("""
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/pooled\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize {fraglen} \
@@ -451,14 +451,14 @@ rule macs_callPeaks_pool:
 		
 		rm -f peaks/pooled_peaks.xls peaks/pooled_peaks.bed peaks/pooled_summits.bed
 		
-		{config[macs2]} bdgcmp  \
+		macs2 bdgcmp  \
                  -t peaks/pooled_treat_pileup.bdg -c peaks/pooled_control_lambda.bdg \
                  --outdir peaks/signals -o pooled_FE.bdg -m FE
 		
 		bedtools slop -i peaks/signals/pooled_FE.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/pooled.fc.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/pooled.fc.signal.bedgraph
 		
-		{config[path]}/bedGraphToBigWig peaks/signals/pooled.fc.signal.bedgraph \
+		.//bedGraphToBigWig peaks/signals/pooled.fc.signal.bedgraph \
                 {config[chrom]} {output.fc_signal}
 		
 		rm -f peaks/signals/pooled.fc.signal.bedgraph peaks/signals/pooled_FE.bdg
@@ -468,25 +468,25 @@ rule macs_callPeaks_pool:
 		
             	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
 	
-		{config[macs2]} bdgcmp \
+		macs2 bdgcmp \
                 -t peaks/pooled_treat_pileup.bdg \
                 -c peaks/pooled_control_lambda.bdg \
                 --outdir peaks/signals -o pooled_ppois.bdg  \
                 -m ppois -S $sval
 
 		bedtools slop -i peaks/signals/pooled_ppois.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/pooled.pval.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/pooled.pval.signal.bedgraph
 		
 		rm -rf peaks/signals/pooled_ppois.bdg
 	
-		{config[path]}/bedGraphToBigWig peaks/signals/pooled.pval.signal.bedgraph\
+		./bedGraphToBigWig peaks/signals/pooled.pval.signal.bedgraph\
 		{config[chrom]} {output.pvalue_signal}
 		
 		rm -f peaks/signals/pooled.pval.signal.bedgraph peaks/signals/pooled_ppois.bdg
 		rm -f peaks/pooled_treat_pileup.bdg peaks/pooled_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
-		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
+		./bedToBigBed -type='bed6+4' -as=shared/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_narrow_bb
 		
 		rm -f {sorted_fn} {rescaled_fn} 
@@ -494,7 +494,7 @@ rule macs_callPeaks_pool:
 		
 		#Calling gappedPeaks	
 		shell("""
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/pooled\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
@@ -556,10 +556,10 @@ rule macs_callPeaks_pool:
 		rm -f {sorted_fn} {rescaled_fn} 
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
-		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
+		./bedToBigBed -type='bed6+3' -as=shared/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_broad_bb
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
-		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
+		./bedToBigBed -type='bed12+3' -as=shared/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_gapped_bb
 
 		""")
@@ -599,7 +599,7 @@ rule macs_callPeaks_pool_psr_1:
 	
 		#Calling narrowPeaks	
 		shell("""
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{params.prefix}\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize {fraglen} \
@@ -631,14 +631,14 @@ rule macs_callPeaks_pool_psr_1:
 		
 		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
 		
-		{config[macs2]} bdgcmp  \
+		macs2 bdgcmp  \
                  -t peaks/{params.prefix}_treat_pileup.bdg -c peaks/{params.prefix}_control_lambda.bdg \
                  --outdir peaks/signals -o {params.prefix}_FE.bdg -m FE
 		
 		bedtools slop -i peaks/signals/{params.prefix}_FE.bdg -g {config[chrom]} -b 0 |\
                 {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.fc.signal.bedgraph
 		
-		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.fc.signal.bedgraph \
+		./bedGraphToBigWig peaks/signals/{params.prefix}.fc.signal.bedgraph \
                 {config[chrom]} {output.fc_signal}
 		
 		rm -f peaks/signals/{params.prefix}.fc.signal.bedgraph peaks/signals/{params.prefix}_FE.bdg
@@ -648,25 +648,25 @@ rule macs_callPeaks_pool_psr_1:
 		
             	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
 	
-		{config[macs2]} bdgcmp \
+		macs2 bdgcmp \
                 -t peaks/{params.prefix}_treat_pileup.bdg \
                 -c peaks/{params.prefix}_control_lambda.bdg \
                 --outdir peaks/signals -o {params.prefix}_ppois.bdg  \
                 -m ppois -S $sval
 
 		bedtools slop -i peaks/signals/{params.prefix}_ppois.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.pval.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.pval.signal.bedgraph
 		
 		rm -rf peaks/signals/{params.prefix}_ppois.bdg
 	
-		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.pval.signal.bedgraph\
+		./bedGraphToBigWig peaks/signals/{params.prefix}.pval.signal.bedgraph\
 		{config[chrom]} {output.pvalue_signal}
 		
 		rm -f peaks/signals/{params.prefix}.pval.signal.bedgraph peaks/signals/{params.prefix}_ppois.bdg
 		rm -f peaks/{params.prefix}_treat_pileup.bdg peaks/{params.prefix}_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
-		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
+		./bedToBigBed -type='bed6+4' -as=shared/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_narrow_bb
 		
 		rm -f {sorted_fn} {rescaled_fn} 
@@ -674,7 +674,7 @@ rule macs_callPeaks_pool_psr_1:
 		
 		#Calling gappedPeaks	
 		shell("""
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{params.prefix}\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
@@ -736,10 +736,10 @@ rule macs_callPeaks_pool_psr_1:
 		rm -f {sorted_fn} {rescaled_fn} 
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
-		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
+		./bedToBigBed -type='bed6+3' -as=shared/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_broad_bb
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
-		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
+		./bedToBigBed -type='bed12+3' -as=shared/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_gapped_bb
 
 		""")
@@ -779,7 +779,7 @@ rule macs_callPeaks_pool_psr_2:
 	
 		#Calling narrowPeaks	
 		shell("""
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{params.prefix}\
                   -g {config[macs_g]} -p 1e-2 --nomodel --shift 0 --extsize {fraglen} \
@@ -811,14 +811,14 @@ rule macs_callPeaks_pool_psr_2:
 		
 		rm -f peaks/{params.prefix}_peaks.xls peaks/{params.prefix}_peaks.bed peaks/{params.prefix}_summits.bed
 		
-		{config[macs2]} bdgcmp  \
+		macs2 bdgcmp  \
                  -t peaks/{params.prefix}_treat_pileup.bdg -c peaks/{params.prefix}_control_lambda.bdg \
                  --outdir peaks/signals -o {params.prefix}_FE.bdg -m FE
 		
 		bedtools slop -i peaks/signals/{params.prefix}_FE.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.fc.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.fc.signal.bedgraph
 		
-		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.fc.signal.bedgraph \
+		./bedGraphToBigWig peaks/signals/{params.prefix}.fc.signal.bedgraph \
                 {config[chrom]} {output.fc_signal}
 		
 		rm -f peaks/signals/{params.prefix}.fc.signal.bedgraph peaks/signals/{params.prefix}_FE.bdg
@@ -828,25 +828,25 @@ rule macs_callPeaks_pool_psr_2:
 		
             	sval=`echo 1 | awk -v ip=$ipReads -v control=$controlReads '{{if(ip<=control){{print ip/1000000}}else{{print control/1000000}}}}'`
 	
-		{config[macs2]} bdgcmp \
+		macs2 bdgcmp \
                 -t peaks/{params.prefix}_treat_pileup.bdg \
                 -c peaks/{params.prefix}_control_lambda.bdg \
                 --outdir peaks/signals -o {params.prefix}_ppois.bdg  \
                 -m ppois -S $sval
 
 		bedtools slop -i peaks/signals/{params.prefix}_ppois.bdg -g {config[chrom]} -b 0 |\
-                {config[path]}/bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.pval.signal.bedgraph
+                ./bedClip stdin {config[chrom]} peaks/signals/{params.prefix}.pval.signal.bedgraph
 		
 		rm -rf peaks/signals/{params.prefix}_ppois.bdg
 	
-		{config[path]}/bedGraphToBigWig peaks/signals/{params.prefix}.pval.signal.bedgraph\
+		./bedGraphToBigWig peaks/signals/{params.prefix}.pval.signal.bedgraph\
 		{config[chrom]} {output.pvalue_signal}
 		
 		rm -f peaks/signals/{params.prefix}.pval.signal.bedgraph peaks/signals/{params.prefix}_ppois.bdg
 		rm -f peaks/{params.prefix}_treat_pileup.bdg peaks/{params.prefix}_control_lambda.bdg
 
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_narrow_bb {output.narrowPeak}
-		{config[path]}/bedToBigBed -type='bed6+4' -as={config[path]}/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
+		./bedToBigBed -type='bed6+4' -as=shared/narrowPeak.as peaks/tmp_{params.prefix}_narrow_bb {config[chrom]} {output.narrowPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_narrow_bb
 		
 		rm -f {sorted_fn} {rescaled_fn} 
@@ -854,7 +854,7 @@ rule macs_callPeaks_pool_psr_2:
 		
 		#Calling gappedPeaks	
 		shell("""
-		{config[macs2]} callpeak \
+		macs2 callpeak \
                   -t {input.ip} -c {input.control}\
                   -f BEDPE -n peaks/{params.prefix}\
                   -g {config[macs_g]} -p 1e-2 --broad --nomodel --shift 0 --extsize {fraglen} \
@@ -916,10 +916,10 @@ rule macs_callPeaks_pool_psr_2:
 		rm -f {sorted_fn} {rescaled_fn} 
 		
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_broad_bb {output.broadPeak}
-		{config[path]}/bedToBigBed -type='bed6+3' -as={config[path]}/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
+		./bedToBigBed -type='bed6+3' -as=shared/broadPeak.as peaks/tmp_{params.prefix}_broad_bb {config[chrom]} {output.broadPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_broad_bb
 		sort -k1,1 -k2,2n -o peaks/tmp_{params.prefix}_gapped_bb {output.gappedPeak}
-		{config[path]}/bedToBigBed -type='bed12+3' -as={config[path]}/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
+		./bedToBigBed -type='bed12+3' -as=shared/gappedPeak.as peaks/tmp_{params.prefix}_gapped_bb {config[chrom]} {output.gappedPeak_bb}
 		rm -f peaks/tmp_{params.prefix}_gapped_bb
 
 		""")

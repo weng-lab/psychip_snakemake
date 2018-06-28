@@ -1,0 +1,10 @@
+
+rule map_bwa_paired:
+	input: "samples/{sample}.R1.fastq.gz", "samples/{sample}.R2.fastq.gz"
+	output:
+		temp("mapped_reads/{sample}.raw.sam.gz")
+	threads:10
+	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
+	log: "logs/0_mapping/{sample}_map_paired"
+	shell:
+		"bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"

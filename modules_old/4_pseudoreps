@@ -14,11 +14,11 @@ rule pseudorepping:
 		"""
 		#If the file is too big '--random-source' option will fail. That's why the '40000000'
 		zcat {input} | shuf --random-source=<(zcat {input} | head -40000000) > {output.shuf}
-		split -d -nl/2 --additional-suffix=\".bed\" {output.shuf} bed_files/psr_{wildcards.sample}.
+		{config[split]} -d -nl/2 --additional-suffix=\".bed\" {output.shuf} bed_files/psr_{wildcards.sample}.
 		
-		sort --parallel={threads} -S 2G \
+		{config[sort]} --parallel={threads} -S 2G \
                      -k1,1 -k2,2n {output.temp_psr1} | gzip -c > {output.psr1} 
-		sort --parallel={threads} -S 2G \
+		{config[sort]} --parallel={threads} -S 2G \
                      -k1,1 -k2,2n {output.temp_psr2} | gzip -c > {output.psr2} 
 		"""
 
@@ -31,7 +31,7 @@ rule pooling_input:
 	threads:4
 	shell:
 		"""
-		zcat {input} | sort --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
+		zcat {input} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
 		"""
 
 rule pseudorepping_pooled:
@@ -46,8 +46,8 @@ rule pseudorepping_pooled:
 	threads:4
 	shell:
 		"""
-		zcat {input.input1} | sort --parallel={threads} -k1,1 -k2,2n | gzip -c > {output.rep1}
-		zcat {input.input2} | sort --parallel={threads} -k1,1 -k2,2n | gzip -c > {output.rep2}
+		zcat {input.input1} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output.rep1}
+		zcat {input.input2} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output.rep2}
 		"""
 
 rule pooling_control:
@@ -58,5 +58,5 @@ rule pooling_control:
 	threads:4
 	shell:
 		"""
-		zcat {input} | sort --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
+		zcat {input} | {config[sort]} --parallel={threads} -k1,1 -k2,2n | gzip -c > {output}
 		"""
