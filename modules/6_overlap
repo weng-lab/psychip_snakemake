@@ -21,7 +21,6 @@ rule overlap:
 	params:
 		prefix="{sample}"
 	message: "Final overlap of the peaks"
-	log: "logs/6_overlap"
 	shell:
 		"""
 		bedtools intersect \
@@ -77,7 +76,6 @@ rule overlap_pooled:
 	params:
 		prefix="pooled"
 	message: "Final overlap of the peaks"
-	log: "logs/6_overlap"
 	shell:
 		"""
 		bedtools intersect \

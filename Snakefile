@@ -1,6 +1,7 @@
 shell.prefix("set -eo pipefail; ")
 
-configfile: "config.yaml"
+#configfile: "config.yaml"
+configfile: "./config_ACC_NeuN+_H3K4me3.yaml"
 localrules: all
 
 ALL_SAMPLES = config["ips"] + config["controls"]
@@ -36,7 +37,8 @@ if not config["tf"]:
 #		P_FINAL = ["peaks/pooled_final.narrowPeak"]
 	
 	rule all:
-		input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + PEAKS + XCOR + POOLED + FINAL
+		input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + XCOR 
+#+ PEAKS + POOLED + FINAL
 		#input: FINAL + P_FINAL
 
 	if config["matching"]:

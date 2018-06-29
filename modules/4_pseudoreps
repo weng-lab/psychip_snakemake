@@ -8,7 +8,6 @@ rule pseudorepping:
 		psr2 = "bed_files/psr_{sample}.01.bed.gz",
 		temp_psr2 = temp("bed_files/psr_{sample}.01.bed")
 	message:"Generating pseudoreps"
-	log:"logs/4_pseudoreps"
 	threads:4
 	shell:
 		"""
@@ -27,7 +26,6 @@ rule pooling_input:
 	input: expand("bed_files/{sample}.bed.gz",sample = config["ips"])
 	output: "bed_files/pooled_inputs.bed.gz"
 	message: "Pooling inputs together"
-	log: "logs/4_pseudoreps"
 	threads:4
 	shell:
 		"""
@@ -42,7 +40,6 @@ rule pseudorepping_pooled:
 		rep1 = "bed_files/pooled_inputs.00.bed.gz",
 		rep2 = "bed_files/pooled_inputs.01.bed.gz"
 	message: "Pseudorepping pooled inputs together"
-	log: "logs/4_pseudoreps"
 	threads:4
 	shell:
 		"""
@@ -54,7 +51,6 @@ rule pooling_control:
 	input: expand("bed_files/{sample}.bed.gz",sample = config["controls"])
 	output: "bed_files/pooled_controls.bed.gz"
 	message: "Pooling controls together"
-	log: "logs/4_pseudoreps"
 	threads:4
 	shell:
 		"""

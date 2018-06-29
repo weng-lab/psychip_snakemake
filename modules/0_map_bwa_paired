@@ -6,7 +6,9 @@ rule map_bwa_paired:
 		index = "shared/hg19_with_sponges.tar.gz"
 	output:
 		temp("mapped_reads/{sample}.raw.sam.gz")
-	threads:10
+	threads: 4
+	resources:
+		mem_mb=200000
 	message: "Aligning step : bwa mem -M -t {threads} {config[genome]} {input} | gzip -c > {output}"
 	log: "logs/0_mapping/{sample}_map_paired"
 	params:
