@@ -37,8 +37,8 @@ if not config["tf"]:
 #		P_FINAL = ["peaks/pooled_final.narrowPeak"]
 	
 	rule all:
-		input: ALL_QC + FLAG_F + FLAG_R + PSEUDO + XCOR 
-#+ PEAKS + POOLED + FINAL
+		input: ALL_QC + FLAG_F + FLAG_R + XCOR
+#+ PSEUDO + PEAKS + POOLED + FINAL
 		#input: FINAL + P_FINAL
 
 	if config["matching"]:
